@@ -58,6 +58,7 @@
       transition: transform 0.1s, opacity 0.2s;
     }
     .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .btn-primary { background: var(--theme-color); color: #fff; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-danger { background: #ef4444; color: #fff; }
@@ -65,7 +66,7 @@
 
     /* 頁面 1：選擇關主 */
     .page-section {
-      padding: 24px 18px 40px;
+      padding: 24px 18px 80px;
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -99,6 +100,9 @@
       border: 3px solid transparent;
       box-shadow: var(--shadow);
       transition: transform 0.15s, border-color 0.2s;
+      position: relative;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
     .guardian-card.selected {
       border-color: var(--theme-color);
@@ -143,7 +147,11 @@
       text-align: center;
       box-shadow: var(--shadow);
       cursor: pointer;
-      transition: transform 0.15s;
+      border: 3px solid transparent;
+      transition: transform 0.15s, border-color 0.2s;
+      position: relative;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
     .kid-card:active { transform: scale(0.97); }
     .kid-card-avatar {
@@ -170,6 +178,35 @@
       padding: 2px 8px;
       border-radius: 999px;
       margin-top: 6px;
+    }
+
+    /* 編輯模式選取樣式 */
+    .edit-mode-item {
+      border: 2.5px dashed #f87171 !important;
+    }
+    .edit-selected {
+      border: 3px solid #ef4444 !important;
+      background: #fef2f2 !important;
+    }
+    .edit-check-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ef4444;
+      background: #fff;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+    .edit-selected .edit-check-badge {
+      background: #ef4444;
     }
 
     /* 頁面 3：主介面 Header */
@@ -298,6 +335,10 @@
       border-radius: var(--radius);
       margin-bottom: 12px;
       box-shadow: var(--shadow);
+      border: 3px solid transparent;
+      position: relative;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
     .task-info { flex: 1; min-width: 140px; }
     .task-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
@@ -420,7 +461,7 @@
       border: 2px solid #16a34a;
     }
 
-    /* 集點銀行底部固定操作列 */
+    /* 底部固定操作列（兌換列與編輯刪除列共用） */
     .redeem-bar {
       position: fixed;
       bottom: 0;
@@ -615,7 +656,7 @@
     <!-- 頁面 1：選擇關主 -->
     <section id="page-guardian" class="page-section">
       <h1 class="page-title">請選擇今日關主</h1>
-      <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色</p>
+      <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色（長按可刪除）</p>
       <div class="guardian-grid" id="guardian-grid"></div>
       <button class="btn btn-primary btn-block" id="btn-confirm-guardian">確認進入</button>
     </section>
@@ -623,7 +664,7 @@
     <!-- 頁面 2：選擇寶貝 -->
     <section id="page-kid" class="page-section hidden">
       <h1 class="page-title">要幫哪位寶貝蓋章？</h1>
-      <p class="page-subtitle">點選寶貝頭像直接進入任務牆</p>
+      <p class="page-subtitle">點選寶貝頭像進入任務牆（長按可刪除）</p>
       <div class="kid-list" id="kid-list"></div>
       <button class="btn btn-primary btn-block" id="btn-open-add-kid">＋ 新增寶貝</button>
       <button class="btn btn-secondary btn-block" style="margin-top:10px;" id="btn-back-guardian">返回選擇關主</button>
@@ -695,6 +736,15 @@
     </div>
   </div>
 
+  <!-- 編輯模式底部固定刪除列 -->
+  <div id="edit-bar" class="redeem-bar hidden">
+    <div class="redeem-bar-count">編輯模式：已選 <span id="edit-selected-count">0</span> 項</div>
+    <div class="redeem-bar-actions">
+      <button class="btn btn-secondary" style="padding:8px 14px; font-size:14px;" id="btn-cancel-edit">取消</button>
+      <button class="btn btn-danger" style="padding:8px 16px; font-size:14px;" id="btn-delete-selected">刪除</button>
+    </div>
+  </div>
+
   <!-- 通用 Modal 容器 -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal-box" id="modal-content"></div>
@@ -749,13 +799,16 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar", customStampImage: "" } },
+      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar", customStampImage: "" } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentTab: "tasks",
       viewDate: getTodayStr(),
       selectedStampIds: new Set(),
-      lastTap: { key: null, time: 0 }
+      lastTap: { key: null, time: 0 },
+      editMode: null, // "guardian" | "kid" | "task" | null
+      editSelectedIds: new Set(),
+      ignoreNextClick: false
     };
 
     // === 工具函式 ===
@@ -775,7 +828,7 @@
 
     function getDayOfWeek(dateStr) {
       const [y, m, d] = dateStr.split("-").map(Number);
-      return new Date(y, m - 1, d).getDay(); // 0=日, 1=一 ... 6=六
+      return new Date(y, m - 1, d).getDay();
     }
 
     function calcAge(birthdayStr) {
@@ -800,6 +853,134 @@
 
     function uid(prefix = "id") {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    // === 長按偵測與編輯模式管理 ===
+    function attachLongPress(el, onLongPress) {
+      let timer = null;
+      let startX = 0, startY = 0;
+
+      const start = (x, y) => {
+        startX = x;
+        startY = y;
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          state.ignoreNextClick = true;
+          setTimeout(() => { state.ignoreNextClick = false; }, 400);
+          if (navigator.vibrate) navigator.vibrate(30);
+          onLongPress();
+        }, 500);
+      };
+      const cancel = () => clearTimeout(timer);
+
+      el.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: true });
+      el.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 1) {
+          if (Math.abs(e.touches[0].clientX - startX) > 10 || Math.abs(e.touches[0].clientY - startY) > 10) cancel();
+        }
+      }, { passive: true });
+      el.addEventListener("touchend", cancel);
+      el.addEventListener("touchcancel", cancel);
+
+      el.addEventListener("mousedown", (e) => {
+        if (e.button === 0) start(e.clientX, e.clientY);
+      });
+      el.addEventListener("mouseup", cancel);
+      el.addEventListener("mouseleave", cancel);
+      el.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    function enterEditMode(type, firstId) {
+      state.editMode = type;
+      state.editSelectedIds = new Set([firstId]);
+      updateEditBar();
+      renderAll();
+    }
+
+    function exitEditMode() {
+      if (!state.editMode) return;
+      state.editMode = null;
+      state.editSelectedIds.clear();
+      updateEditBar();
+      renderAll();
+    }
+
+    function toggleEditSelection(id) {
+      if (state.editSelectedIds.has(id)) state.editSelectedIds.delete(id);
+      else state.editSelectedIds.add(id);
+      updateEditBar();
+      renderAll();
+    }
+
+    function updateEditBar() {
+      const bar = document.getElementById("edit-bar");
+      const count = state.editSelectedIds.size;
+      document.getElementById("edit-selected-count").textContent = count;
+      document.getElementById("btn-delete-selected").disabled = count === 0;
+      bar.classList.toggle("hidden", !state.editMode);
+    }
+
+    function openConfirmDeleteModal() {
+      const ids = [...state.editSelectedIds];
+      if (ids.length === 0) return;
+
+      const labels = { guardian: "關主", kid: "寶貝", task: "任務" };
+      const targetLabel = labels[state.editMode] || "項目";
+      let names = [];
+      if (state.editMode === "guardian") {
+        const all = getAllGuardians();
+        names = ids.map((id) => all[id]?.name).filter(Boolean);
+      } else if (state.editMode === "kid") {
+        const all = getActiveKids();
+        names = ids.map((id) => all[id]?.name).filter(Boolean);
+      } else if (state.editMode === "task") {
+        const all = state.dbData.tasks || {};
+        names = ids.map((id) => all[id]?.name).filter(Boolean);
+      }
+
+      openModal(`
+        <h3 class="modal-title">確認刪除${targetLabel}</h3>
+        <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
+          確定要刪除已選取的 <strong>${ids.length}</strong> 個${targetLabel}嗎？
+        </p>
+        ${names.length > 0 ? `<p style="text-align:center; font-size:14px; color:#ef4444; font-weight:700; margin:0;">「${names.join("、")}」</p>` : ""}
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-danger" id="m-confirm-delete">確認刪除</button>
+        </div>`);
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-delete").onclick = () => {
+        const updates = {};
+        if (state.editMode === "guardian") {
+          ids.forEach((id) => {
+            if (DEFAULT_GUARDIANS[id]) {
+              updates[`${ROOT_PATH}/guardians/${id}`] = { id, deleted: true };
+            } else {
+              updates[`${ROOT_PATH}/guardians/${id}`] = null;
+            }
+          });
+        } else if (state.editMode === "kid") {
+          ids.forEach((id) => {
+            if (DEMO_KIDS[id]) {
+              updates[`${ROOT_PATH}/deletedDemoKids/${id}`] = true;
+            } else {
+              updates[`${ROOT_PATH}/kids/${id}`] = null;
+            }
+          });
+        } else if (state.editMode === "task") {
+          ids.forEach((id) => {
+            updates[`${ROOT_PATH}/tasks/${id}`] = null;
+          });
+        }
+
+        update(ref(db), updates);
+        closeModal();
+        exitEditMode();
+        showToast(`已刪除 ${ids.length} 個${targetLabel}`);
+      };
     }
 
     // === Q版專屬 SVG 頭像、指紋與愛心產生器 ===
@@ -913,9 +1094,15 @@
       return getDemoKidSVG(kid.avatar || "demo_sis1");
     }
 
+    function getGuardianForDisplay(id) {
+      const custom = (state.dbData.guardians || {})[id];
+      if (custom && !custom.deleted) return custom;
+      if (DEFAULT_GUARDIANS[id]) return DEFAULT_GUARDIANS[id];
+      return { id, name: "已刪除關主", color: "#6b7280", bg: "#f3f4f6", avatarType: "custom" };
+    }
+
     function renderStampGraphic(stamp) {
-      const guardians = getAllGuardians();
-      const g = guardians[stamp.guardianId] || DEFAULT_GUARDIANS.dad;
+      const g = getGuardianForDisplay(stamp.guardianId);
       if (stamp.mode === "fingerprint") {
         return getFingerprintSVG(g.color);
       }
@@ -933,17 +1120,27 @@
 
     // === 取得合併後的資料 ===
     function getAllGuardians() {
-      return { ...DEFAULT_GUARDIANS, ...(state.dbData.guardians || {}) };
+      const merged = { ...DEFAULT_GUARDIANS, ...(state.dbData.guardians || {}) };
+      const active = {};
+      Object.values(merged).forEach((g) => {
+        if (g && !g.deleted) active[g.id] = g;
+      });
+      return active;
     }
 
     function getActiveKids() {
       const realKids = state.dbData.kids || {};
       if (Object.keys(realKids).length > 0) return realKids;
-      return DEMO_KIDS;
+      const deletedDemo = state.dbData.deletedDemoKids || {};
+      const activeDemo = {};
+      Object.values(DEMO_KIDS).forEach((k) => {
+        if (!deletedDemo[k.id]) activeDemo[k.id] = k;
+      });
+      return activeDemo;
     }
 
     function applyGuardianTheme(guardianId) {
-      const g = getAllGuardians()[guardianId] || DEFAULT_GUARDIANS.dad;
+      const g = getGuardianForDisplay(guardianId);
       document.documentElement.style.setProperty("--theme-color", g.color);
       document.documentElement.style.setProperty("--theme-bg", g.bg);
     }
@@ -976,6 +1173,9 @@
 
     // === 頁面切換 ===
     function showPage(pageName) {
+      state.editMode = null;
+      state.editSelectedIds.clear();
+      updateEditBar();
       document.getElementById("page-guardian").classList.toggle("hidden", pageName !== "guardian");
       document.getElementById("page-kid").classList.toggle("hidden", pageName !== "kid");
       document.getElementById("page-main").classList.toggle("hidden", pageName !== "main");
@@ -988,6 +1188,11 @@
 
     // === 渲染函式 ===
     function renderAll() {
+      const guardians = getAllGuardians();
+      const guardianKeys = Object.keys(guardians);
+      if (guardianKeys.length > 0 && !guardians[state.currentGuardianId]) {
+        state.currentGuardianId = guardianKeys[0];
+      }
       applyGuardianTheme(state.currentGuardianId);
       renderGuardianPage();
       renderKidPage();
@@ -1006,14 +1211,25 @@
     function renderGuardianPage() {
       const grid = document.getElementById("guardian-grid");
       const guardians = getAllGuardians();
+      const isEditing = state.editMode === "guardian";
       grid.innerHTML = "";
+
       Object.values(guardians).forEach((g) => {
+        const isEditSel = isEditing && state.editSelectedIds.has(g.id);
         const card = document.createElement("div");
-        card.className = `guardian-card ${g.id === state.currentGuardianId ? "selected" : ""}`;
+        card.className = `guardian-card ${!isEditing && g.id === state.currentGuardianId ? "selected" : ""} ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
         card.innerHTML = `
+          ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <div class="guardian-avatar">${getGuardianSVG(g)}</div>
           <div class="guardian-name">${g.name}</div>`;
+
+        attachLongPress(card, () => enterEditMode("guardian", g.id));
         card.onclick = () => {
+          if (state.ignoreNextClick) return;
+          if (isEditing) {
+            toggleEditSelection(g.id);
+            return;
+          }
           state.currentGuardianId = g.id;
           applyGuardianTheme(g.id);
           renderGuardianPage();
@@ -1024,23 +1240,43 @@
       const addCard = document.createElement("div");
       addCard.className = "guardian-card add-card";
       addCard.innerHTML = `<div style="font-size:32px; line-height:1;">＋</div><div class="guardian-name" style="margin-top:6px;">新增身分</div>`;
-      addCard.onclick = openAddGuardianModal;
+      addCard.onclick = () => {
+        if (isEditing) exitEditMode();
+        openAddGuardianModal();
+      };
       grid.appendChild(addCard);
     }
 
     function renderKidPage() {
       const list = document.getElementById("kid-list");
       const kids = getActiveKids();
+      const isEditing = state.editMode === "kid";
       list.innerHTML = "";
-      Object.values(kids).forEach((kid) => {
+
+      const kidArr = Object.values(kids);
+      if (kidArr.length === 0) {
+        list.innerHTML = `<div class="empty-hint">目前沒有寶貝資料，請點下方「＋ 新增寶貝」</div>`;
+        return;
+      }
+
+      kidArr.forEach((kid) => {
+        const isEditSel = isEditing && state.editSelectedIds.has(kid.id);
         const card = document.createElement("div");
-        card.className = "kid-card";
+        card.className = `kid-card ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
         card.innerHTML = `
+          ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <div class="kid-card-avatar">${renderKidAvatarHTML(kid)}</div>
           <div class="kid-card-name">${kid.name}</div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
           ${kid.isDemo ? '<span class="demo-badge">測試用預設寶貝</span>' : ""}`;
+
+        attachLongPress(card, () => enterEditMode("kid", kid.id));
         card.onclick = () => {
+          if (state.ignoreNextClick) return;
+          if (isEditing) {
+            toggleEditSelection(kid.id);
+            return;
+          }
           state.currentKidId = kid.id;
           state.viewDate = getTodayStr();
           state.selectedStampIds.clear();
@@ -1052,7 +1288,7 @@
 
     function renderMainHeader() {
       const kid = getActiveKids()[state.currentKidId];
-      const guardian = getAllGuardians()[state.currentGuardianId] || DEFAULT_GUARDIANS.dad;
+      const guardian = getGuardianForDisplay(state.currentGuardianId);
       if (!kid) return;
       document.getElementById("header-kid-avatar").innerHTML = renderKidAvatarHTML(kid);
       document.getElementById("header-kid-name").textContent = kid.name;
@@ -1063,6 +1299,7 @@
       const today = getTodayStr();
       const isToday = state.viewDate === today;
       const dow = getDayOfWeek(state.viewDate);
+      const isEditing = state.editMode === "task";
 
       document.getElementById("display-date").innerHTML =
         `${state.viewDate}${!isToday ? '<span class="readonly-tag">歷史唯讀</span>' : ""}`;
@@ -1089,14 +1326,24 @@
         const taskStamps = stamps.filter(
           (s) => s.kidId === state.currentKidId && s.taskId === task.id && s.date === state.viewDate
         );
+        const isEditSel = isEditing && state.editSelectedIds.has(task.id);
 
         const row = document.createElement("div");
-        row.className = "task-item";
+        row.className = `task-item ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
         row.innerHTML = `
+          ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <div class="task-info">
             <div class="task-title">${task.name}</div>
-            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
+            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${!isEditing && taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
           </div>`;
+
+        attachLongPress(row, () => enterEditMode("task", task.id));
+        if (isEditing) {
+          row.onclick = () => {
+            if (state.ignoreNextClick) return;
+            toggleEditSelection(task.id);
+          };
+        }
 
         const boxesWrap = document.createElement("div");
         boxesWrap.className = "stamp-boxes-wrap";
@@ -1104,12 +1351,16 @@
         for (let slotIndex = 0; slotIndex < stampCount; slotIndex++) {
           const existingStamp = taskStamps.find((s) => (s.slotIndex ?? 0) === slotIndex);
           const box = document.createElement("div");
-          box.className = `stamp-box ${existingStamp ? "stamped" : ""} ${!isToday ? "readonly" : ""}`;
+          box.className = `stamp-box ${existingStamp ? "stamped" : ""} ${!isToday || isEditing ? "readonly" : ""}`;
           if (existingStamp) {
             box.innerHTML = `<div class="stamp-anim">${renderStampGraphic(existingStamp)}</div>`;
           }
-          if (isToday) {
-            box.onclick = () => handleStampClick(task, existingStamp, slotIndex);
+          if (isToday && !isEditing) {
+            box.onclick = (e) => {
+              if (state.ignoreNextClick) return;
+              e.stopPropagation();
+              handleStampClick(task, existingStamp, slotIndex);
+            };
           }
           boxesWrap.appendChild(box);
         }
@@ -1124,7 +1375,6 @@
       const tapKey = `${task.id}_${state.viewDate}_${slotIndex}`;
 
       if (!existingStamp) {
-        // 尚未蓋章 -> 單擊立即蓋章
         const mode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
         const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
         if (mode === "custom" && !customImg) {
@@ -1147,7 +1397,6 @@
         set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), newStamp);
         showToast("蓋章成功！");
       } else {
-        // 已蓋章 -> 快速連點兩下取消
         if (state.lastTap.key === tapKey && now - state.lastTap.time < 420) {
           if (existingStamp.redeemedId) {
             showToast("此圖章已兌換，無法直接取消");
@@ -1185,7 +1434,6 @@
         return;
       }
 
-      // 清理已不存在的選取 ID
       const validIds = new Set(available.map((s) => s.id));
       for (const id of state.selectedStampIds) {
         if (!validIds.has(id)) state.selectedStampIds.delete(id);
@@ -1218,7 +1466,6 @@
 
     function renderRedemptionHistory() {
       const listEl = document.getElementById("redemption-list");
-      const guardians = getAllGuardians();
       const records = Object.values(state.dbData.redemptions || {})
         .filter((r) => r.kidId === state.currentKidId)
         .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
@@ -1231,7 +1478,7 @@
       const todayMs = new Date(getTodayStr()).getTime();
       listEl.innerHTML = "";
       records.forEach((rec) => {
-        const g = guardians[rec.guardianId] || DEFAULT_GUARDIANS.dad;
+        const g = getGuardianForDisplay(rec.guardianId);
         const recMs = new Date(rec.date).getTime();
         const diffDays = (todayMs - recMs) / (1000 * 60 * 60 * 24);
         const canCancel = diffDays <= 7;
@@ -1358,6 +1605,7 @@
 
     // 齒輪設定 Modal
     function openSettingsModal() {
+      exitEditMode();
       const currentMode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
       const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
       openModal(`
@@ -1544,7 +1792,7 @@
         <h3 class="modal-title">💖 誰最疼我排行榜</h3>
         <div>
           ${sorted.map(([gid, cnt]) => {
-            const g = guardians[gid] || { name: "神秘關主", color: "#6b7280", bg: "#f3f4f6" };
+            const g = getGuardianForDisplay(gid);
             return `
               <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:8px;border-radius:12px;background:${g.bg};">
                 <div style="display:flex;align-items:center;gap:10px;">
@@ -1602,9 +1850,15 @@
     }
 
     // === 事件綁定 ===
-    document.getElementById("btn-confirm-guardian").onclick = () => showPage("kid");
+    document.getElementById("btn-confirm-guardian").onclick = () => {
+      if (Object.keys(getAllGuardians()).length === 0) return showToast("請先新增至少一位關主");
+      showPage("kid");
+    };
     document.getElementById("btn-back-guardian").onclick = () => showPage("guardian");
-    document.getElementById("btn-open-add-kid").onclick = openAddKidModal;
+    document.getElementById("btn-open-add-kid").onclick = () => {
+      exitEditMode();
+      openAddKidModal();
+    };
     document.getElementById("btn-open-settings").onclick = openSettingsModal;
     document.getElementById("btn-who-loves-me").onclick = openWhoLovesMeModal;
     document.getElementById("btn-cancel-select").onclick = () => {
@@ -1612,10 +1866,13 @@
       renderStampBank();
     };
     document.getElementById("btn-open-redeem-modal").onclick = openRedeemModal;
+    document.getElementById("btn-cancel-edit").onclick = exitEditMode;
+    document.getElementById("btn-delete-selected").onclick = openConfirmDeleteModal;
 
     // 頁籤切換
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.onclick = () => {
+        exitEditMode();
         state.currentTab = btn.dataset.tab;
         document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
         document.getElementById("tab-tasks").classList.toggle("hidden", state.currentTab !== "tasks");
@@ -1642,11 +1899,12 @@
       touchStartY = e.changedTouches[0].clientY;
     }, { passive: true });
     taskTabEl.addEventListener("touchend", (e) => {
+      if (state.editMode) return;
       const dx = e.changedTouches[0].clientX - touchStartX;
       const dy = e.changedTouches[0].clientY - touchStartY;
       if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-        if (dx > 0) shiftDate(-1); // 往右滑看過去
-        else shiftDate(1);         // 往左滑回今天
+        if (dx > 0) shiftDate(-1);
+        else shiftDate(1);
       }
     }, { passive: true });
 
@@ -1656,6 +1914,7 @@
       state.dbData = {
         guardians: val.guardians || {},
         kids: val.kids || {},
+        deletedDemoKids: val.deletedDemoKids || {},
         tasks: val.tasks || {},
         stamps: val.stamps || {},
         redemptions: val.redemptions || {},
