@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>寶貝集章小幫手</title>
+  <style>
+    :root {
+      --theme-color: #3b82f6;
+      --theme-bg: #eff6ff;
+      --card-bg: #ffffff;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+      --radius: 16px;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background-color: var(--theme-bg);
+      color: var(--text-main);
+      transition: background-color 0.35s ease;
+      min-height: 100vh;
+      overscroll-behavior-y: contain;
+    }
+
+    .app-container {
+      max-width: 520px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 同步狀態條 */
+    .sync-bar {
+      text-align: center;
+      font-size: 12px;
+      padding: 4px 8px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text-sub);
+    }
+
+    /* 通用按鈕 */
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--theme-color); color: #fff; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-block { width: 100%; }
+
+    /* 頁面 1：選擇關主 */
+    .page-section {
+      padding: 24px 18px 40px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    .page-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 800;
+      margin: 8px 0 6px;
+      color: #111827;
+    }
+    .page-subtitle {
+      text-align: center;
+      font-size: 14px;
+      color: var(--text-sub);
+      margin: 0 0 24px;
+    }
+
+    .guardian-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .guardian-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: var(--radius);
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      border: 3px solid transparent;
+      box-shadow: var(--shadow);
+      transition: transform 0.15s, border-color 0.2s;
+    }
+    .guardian-card.selected {
+      border-color: var(--theme-color);
+      transform: translateY(-3px);
+      background: #fff;
+    }
+    .guardian-avatar {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 8px;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .guardian-name {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .add-card {
+      border: 2px dashed #9ca3af;
+      background: rgba(255, 255, 255, 0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #4b5563;
+    }
+
+    /* 頁面 2：選擇寶貝 */
+    .kid-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kid-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 18px 12px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .kid-card:active { transform: scale(0.97); }
+    .kid-card-avatar {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      object-fit: cover;
+      border: 3px solid var(--theme-color);
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .kid-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .kid-card-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .kid-card-age { font-size: 13px; color: var(--text-sub); }
+    .demo-badge {
+      display: inline-block;
+      font-size: 11px;
+      background: #fef3c7;
+      color: #92400e;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-top: 6px;
+    }
+
+    /* 頁面 3：主介面 Header */
+    .main-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(8px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-avatar {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: 2px solid var(--theme-color);
+      overflow: hidden;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .header-kid-info { display: flex; flex-direction: column; }
+    .header-kid-name { font-size: 17px; font-weight: 800; line-height: 1.2; }
+    .header-guardian-tag {
+      font-size: 12px;
+      color: var(--theme-color);
+      font-weight: 700;
+    }
+    .gear-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: #f3f4f6;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 頁籤列 */
+    .tabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 6px 12px;
+      gap: 8px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 10px 6px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-sub);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--theme-color);
+      color: #fff;
+    }
+
+    .tab-content {
+      padding: 16px;
+      flex: 1;
+      padding-bottom: 90px;
+    }
+
+    /* 任務牆 */
+    .date-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 10px 14px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      user-select: none;
+    }
+    .date-nav-btn {
+      border: none;
+      background: #f3f4f6;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .date-nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .date-display { text-align: center; }
+    .date-text { font-size: 17px; font-weight: 800; }
+    .date-sub { font-size: 12px; color: var(--text-sub); }
+    .readonly-tag {
+      display: inline-block;
+      background: #fee2e2;
+      color: #b91c1c;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 6px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.96);
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .task-info { flex: 1; padding-right: 12px; }
+    .task-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+    .task-meta { font-size: 12px; color: var(--text-sub); }
+
+    .stamp-box {
+      width: 62px;
+      height: 62px;
+      border: 2.5px dashed #cbd5e1;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      background: #f8fafc;
+      flex-shrink: 0;
+      position: relative;
+      user-select: none;
+    }
+    .stamp-box.stamped {
+      border-style: solid;
+      border-color: transparent;
+      background: transparent;
+    }
+    .stamp-box.readonly { cursor: default; opacity: 0.85; }
+    .stamp-anim {
+      width: 56px;
+      height: 56px;
+      animation: stampPop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    @keyframes stampPop {
+      0% { transform: scale(1.7) rotate(-15deg); opacity: 0.3; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    /* 集點銀行 */
+    .bank-stats {
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .bank-stats-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .stat-main-num {
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--theme-color);
+      line-height: 1;
+    }
+    .stat-label { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+    .bank-stats-sub {
+      display: flex;
+      gap: 16px;
+      border-top: 1px solid #f3f4f6;
+      padding-top: 10px;
+      font-size: 14px;
+      color: #4b5563;
+    }
+    .love-btn {
+      background: #fef3c7;
+      color: #b45309;
+      border: 1.5px solid #f59e0b;
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .stamp-bank-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      align-content: start;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 14px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      min-height: 120px;
+    }
+    .bank-stamp-cell {
+      width: 100%;
+      min-width: 0;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      border-radius: 50%;
+      padding: 2px;
+      transition: transform 0.12s;
+    }
+    .bank-stamp-cell:active { transform: scale(0.92); }
+    .bank-stamp-cell.selected::after {
+      content: "✓";
+      position: absolute;
+      inset: 0;
+      background: rgba(34, 197, 94, 0.78);
+      color: #fff;
+      font-size: 28px;
+      font-weight: 900;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #16a34a;
+    }
+
+    /* 集點銀行底部固定操作列 */
+    .redeem-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 520px;
+      background: #111827;
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 50;
+      box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
+    }
+    .redeem-bar-count { font-size: 16px; font-weight: 700; }
+    .redeem-bar-actions { display: flex; gap: 10px; }
+
+    /* 兌換紀錄 */
+    .redemption-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 10px;
+      box-shadow: var(--shadow);
+      color: #111827;
+    }
+    .redemption-left { flex: 1; }
+    .redemption-title { font-size: 16px; font-weight: 800; }
+    .redemption-meta { font-size: 13px; opacity: 0.85; margin-top: 4px; }
+    .redemption-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .cancel-redeem-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(239, 68, 68, 0.9);
+      color: #fff;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    /* 彈出視窗 Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 16px;
+    }
+    .modal-box {
+      background: #fff;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 20px;
+      padding: 20px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .modal-title {
+      font-size: 19px;
+      font-weight: 800;
+      margin: 0 0 16px;
+      text-align: center;
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    .checkbox-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .menu-list-btn {
+      width: 100%;
+      text-align: left;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      border: 1.5px solid #e5e7eb;
+      background: #f9fafb;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .modal-actions .btn { flex: 1; }
+
+    .empty-hint {
+      text-align: center;
+      color: var(--text-sub);
+      padding: 36px 16px;
+      font-size: 15px;
+      grid-column: 1 / -1;
+    }
+
+    /* Toast 提示 */
+    .toast {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(17, 24, 39, 0.9);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sync-bar" id="sync-status">雲端連線中...</div>
+
+    <!-- 頁面 1：選擇關主 -->
+    <section id="page-guardian" class="page-section">
+      <h1 class="page-title">請選擇今日關主</h1>
+      <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色</p>
+      <div class="guardian-grid" id="guardian-grid"></div>
+      <button class="btn btn-primary btn-block" id="btn-confirm-guardian">確認進入</button>
+    </section>
+
+    <!-- 頁面 2：選擇寶貝 -->
+    <section id="page-kid" class="page-section hidden">
+      <h1 class="page-title">要幫哪位寶貝蓋章？</h1>
+      <p class="page-subtitle">點選寶貝頭像直接進入任務牆</p>
+      <div class="kid-list" id="kid-list"></div>
+      <button class="btn btn-primary btn-block" id="btn-open-add-kid">＋ 新增寶貝</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:10px;" id="btn-back-guardian">返回選擇關主</button>
+    </section>
+
+    <!-- 頁面 3：集點任務主頁 -->
+    <section id="page-main" class="hidden" style="display:flex; flex-direction:column; flex:1;">
+      <header class="main-header">
+        <div class="header-left">
+          <div class="header-avatar" id="header-kid-avatar"></div>
+          <div class="header-kid-info">
+            <span class="header-kid-name" id="header-kid-name">寶貝</span>
+            <span class="header-guardian-tag" id="header-guardian-tag">關主：爸爸</span>
+          </div>
+        </div>
+        <button class="gear-btn" id="btn-open-settings" title="設定">⚙️</button>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="tasks">任務牆</button>
+        <button class="tab-btn" data-tab="bank">集點銀行</button>
+        <button class="tab-btn" data-tab="history">兌換紀錄</button>
+      </nav>
+
+      <!-- 頁籤 1：任務牆 -->
+      <div id="tab-tasks" class="tab-content">
+        <div class="date-bar" id="date-swipe-area">
+          <button class="date-nav-btn" id="btn-prev-day">◀</button>
+          <div class="date-display">
+            <div class="date-text" id="display-date">2026-11-23</div>
+            <div class="date-sub" id="display-weekday">星期一</div>
+          </div>
+          <button class="date-nav-btn" id="btn-next-day">▶</button>
+        </div>
+        <div id="task-wall-list"></div>
+      </div>
+
+      <!-- 頁籤 2：集點銀行 -->
+      <div id="tab-bank" class="tab-content hidden">
+        <div class="bank-stats">
+          <div class="bank-stats-top">
+            <div>
+              <div class="stat-main-num" id="stat-available">0</div>
+              <div class="stat-label">可兌換圖章</div>
+            </div>
+            <button class="love-btn" id="btn-who-loves-me">💖 誰最疼我</button>
+          </div>
+          <div class="bank-stats-sub">
+            <span>已兌換：<strong id="stat-redeemed">0</strong></span>
+            <span>累計總數：<strong id="stat-total">0</strong></span>
+          </div>
+        </div>
+        <div class="stamp-bank-grid" id="stamp-bank-grid"></div>
+      </div>
+
+      <!-- 頁籤 3：兌換紀錄 -->
+      <div id="tab-history" class="tab-content hidden">
+        <div id="redemption-list"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 集點銀行底部固定兌換列 -->
+  <div id="redeem-bar" class="redeem-bar hidden">
+    <div class="redeem-bar-count">已選取 <span id="selected-stamp-count">0</span> 個圖章</div>
+    <div class="redeem-bar-actions">
+      <button class="btn btn-secondary" style="padding:8px 14px; font-size:14px;" id="btn-cancel-select">取消</button>
+      <button class="btn btn-primary" style="padding:8px 16px; font-size:14px;" id="btn-open-redeem-modal">兌換</button>
+    </div>
+  </div>
+
+  <!-- 通用 Modal 容器 -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal-box" id="modal-content"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
+
+    // === Firebase 設定 ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4rjiN-kY3x-p8PA-nu0iFwixbgjblA7o",
+      authDomain: "baby-scollection.firebaseapp.com",
+      databaseURL: "https://baby-scollection-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "baby-scollection",
+      storageBucket: "baby-scollection.firebasestorage.app",
+      messagingSenderId: "23229963817",
+      appId: "1:23229963817:web:2d862adc2d452c261e4638",
+      measurementId: "G-8KRQ90NX5S"
+    };
+    const FAMILY_KEY = "0000";
+    const ROOT_PATH = `families/${FAMILY_KEY}`;
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // === 預設資料 ===
+    const DEFAULT_GUARDIANS = {
+      dad: { id: "dad", name: "爸爸", color: "#3b82f6", bg: "#dbeafe", avatarType: "dad" },
+      mom: { id: "mom", name: "媽媽", color: "#ec4899", bg: "#fce7f3", avatarType: "mom" },
+      grandpa: { id: "grandpa", name: "爺爺", color: "#14b8a6", bg: "#ccfbf1", avatarType: "grandpa" },
+      grandma: { id: "grandma", name: "奶奶", color: "#a855f7", bg: "#f3e8ff", avatarType: "grandma" },
+      aunt: { id: "aunt", name: "阿姨", color: "#f97316", bg: "#ffedd5", avatarType: "aunt" }
+    };
+
+    const EXTRA_COLORS = [
+      { color: "#10b981", bg: "#d1fae5" },
+      { color: "#eab308", bg: "#fef9c3" },
+      { color: "#6366f1", bg: "#e0e7ff" },
+      { color: "#ef4444", bg: "#fee2e2" },
+      { color: "#06b6d4", bg: "#cffafe" }
+    ];
+
+    const DEMO_KIDS = {
+      demo_sister1: { id: "demo_sister1", name: "姐姐", birthday: "2020-05-10", avatar: "demo_sis1", isDemo: true },
+      demo_sister2: { id: "demo_sister2", name: "妹妹", birthday: "2022-08-20", avatar: "demo_sis2", isDemo: true }
+    };
+
+    const WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+
+    // === 應用程式狀態 ===
+    const state = {
+      dbData: { guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar" } },
+      currentGuardianId: "dad",
+      currentKidId: null,
+      currentTab: "tasks",
+      viewDate: getTodayStr(),
+      selectedStampIds: new Set(),
+      lastTap: { key: null, time: 0 }
+    };
+
+    // === 工具函式 ===
+    function getTodayStr() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    function addDays(dateStr, delta) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const dt = new Date(y, m - 1, d + delta);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    }
+
+    function getDayOfWeek(dateStr) {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      return new Date(y, m - 1, d).getDay(); // 0=日, 1=一 ... 6=六
+    }
+
+    function calcAge(birthdayStr) {
+      if (!birthdayStr) return "";
+      const [y, m, d] = birthdayStr.split("-").map(Number);
+      const today = new Date();
+      let age = today.getFullYear() - y;
+      let months = today.getMonth() + 1 - m;
+      if (today.getDate() < d) months--;
+      if (months < 0) { age--; months += 12; }
+      if (age < 0) return "未滿1歲";
+      return months > 0 ? `${age}歲${months}個月` : `${age}歲`;
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.remove("show"), 1800);
+    }
+
+    function uid(prefix = "id") {
+      return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    // === Q版專屬 SVG 頭像與指紋產生器 ===
+    function getGuardianSVG(guardian) {
+      const c = guardian.color || "#3b82f6";
+      const type = guardian.avatarType || "custom";
+      let face = "";
+      if (type === "dad") {
+        face = `
+          <circle cx="50" cy="54" r="28" fill="#fde68a"/>
+          <path d="M22 48 C22 20, 78 20, 78 48 C70 36, 30 36, 22 48 Z" fill="#1f2937"/>
+          <rect x="30" y="47" width="16" height="11" rx="4" fill="none" stroke="#111827" stroke-width="2.5"/>
+          <rect x="54" y="47" width="16" height="11" rx="4" fill="none" stroke="#111827" stroke-width="2.5"/>
+          <line x1="46" y1="52" x2="54" y2="52" stroke="#111827" stroke-width="2.5"/>
+          <circle cx="38" cy="52" r="2.2" fill="#111827"/><circle cx="62" cy="52" r="2.2" fill="#111827"/>
+          <path d="M43 66 Q50 72 57 66" fill="none" stroke="#92400e" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else if (type === "mom") {
+        face = `
+          <path d="M18 60 C18 20, 82 20, 82 60 C82 78, 70 84, 50 84 C30 84, 18 78, 18 60 Z" fill="#78350f"/>
+          <circle cx="50" cy="55" r="26" fill="#fef3c7"/>
+          <path d="M24 48 Q50 32 76 48 Q65 26 50 26 Q35 26 24 48 Z" fill="#78350f"/>
+          <circle cx="39" cy="54" r="2.8" fill="#1f2937"/><circle cx="61" cy="54" r="2.8" fill="#1f2937"/>
+          <circle cx="32" cy="60" r="4" fill="#f9a8d4" opacity="0.7"/><circle cx="68" cy="60" r="4" fill="#f9a8d4" opacity="0.7"/>
+          <path d="M44 65 Q50 71 56 65" fill="none" stroke="#be185d" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else if (type === "grandpa") {
+        face = `
+          <circle cx="50" cy="54" r="27" fill="#fde68a"/>
+          <path d="M22 46 C22 24, 38 22, 34 40 M78 46 C78 24, 62 22, 66 40" stroke="#e5e7eb" stroke-width="10" stroke-linecap="round"/>
+          <circle cx="39" cy="51" r="7" fill="none" stroke="#4b5563" stroke-width="2.2"/>
+          <circle cx="61" cy="51" r="7" fill="none" stroke="#4b5563" stroke-width="2.2"/>
+          <line x1="46" y1="51" x2="54" y2="51" stroke="#4b5563" stroke-width="2.2"/>
+          <circle cx="39" cy="51" r="2" fill="#1f2937"/><circle cx="61" cy="51" r="2" fill="#1f2937"/>
+          <path d="M36 64 Q43 59 50 64 Q57 59 64 64" fill="none" stroke="#f3f4f6" stroke-width="5" stroke-linecap="round"/>`;
+      } else if (type === "grandma") {
+        face = `
+          <circle cx="50" cy="22" r="12" fill="#e5e7eb"/>
+          <circle cx="50" cy="56" r="26" fill="#fef3c7"/>
+          <path d="M24 52 C24 24, 76 24, 76 52 C65 38, 35 38, 24 52 Z" fill="#e5e7eb"/>
+          <circle cx="39" cy="54" r="6.5" fill="none" stroke="#6b21a8" stroke-width="2"/>
+          <circle cx="61" cy="54" r="6.5" fill="none" stroke="#6b21a8" stroke-width="2"/>
+          <circle cx="39" cy="54" r="2" fill="#1f2937"/><circle cx="61" cy="54" r="2" fill="#1f2937"/>
+          <path d="M44 67 Q50 72 56 67" fill="none" stroke="#be185d" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "aunt") {
+        face = `
+          <circle cx="23" cy="64" r="10" fill="#9a3412"/><circle cx="77" cy="64" r="10" fill="#9a3412"/>
+          <circle cx="50" cy="54" r="26" fill="#fef3c7"/>
+          <path d="M24 50 C24 22, 76 22, 76 50 C62 34, 38 34, 24 50 Z" fill="#9a3412"/>
+          <circle cx="39" cy="54" r="2.8" fill="#1f2937"/><circle cx="61" cy="54" r="2.8" fill="#1f2937"/>
+          <circle cx="24" cy="62" r="3" fill="#fbbf24"/><circle cx="76" cy="62" r="3" fill="#fbbf24"/>
+          <path d="M43 65 Q50 72 57 65" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else {
+        face = `
+          <circle cx="50" cy="55" r="26" fill="#fef3c7"/>
+          <path d="M32 30 L40 18 L50 28 L60 18 L68 30 Z" fill="#fbbf24"/>
+          <circle cx="39" cy="54" r="3" fill="#1f2937"/><circle cx="61" cy="54" r="3" fill="#1f2937"/>
+          <path d="M42 66 Q50 73 58 66" fill="none" stroke="#d97706" stroke-width="2.8" stroke-linecap="round"/>`;
+      }
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <circle cx="50" cy="50" r="48" fill="${c}" opacity="0.22"/>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="${c}" stroke-width="4"/>
+        ${face}
+      </svg>`;
+    }
+
+    function getFingerprintSVG(color) {
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <g fill="none" stroke="${color}" stroke-width="4.5" stroke-linecap="round">
+          <path d="M50 18 C30 18, 18 32, 18 52 C18 68, 25 80, 34 86"/>
+          <path d="M50 18 C70 18, 82 32, 82 52 C82 65, 76 76, 68 83"/>
+          <path d="M50 28 C36 28, 27 38, 27 52 C27 66, 34 76, 44 84"/>
+          <path d="M50 28 C64 28, 73 38, 73 52 C73 62, 68 72, 60 78"/>
+          <path d="M50 38 C42 38, 36 44, 36 53 C36 64, 42 73, 52 79"/>
+          <path d="M50 38 C58 38, 64 44, 64 53 C64 60, 61 66, 56 71"/>
+          <path d="M50 48 C47 48, 45 50, 45 54 C45 60, 48 65, 53 68"/>
+        </g>
+      </svg>`;
+    }
+
+    function getDemoKidSVG(type) {
+      if (type === "demo_sis1") {
+        return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+          <circle cx="50" cy="50" r="50" fill="#fce7f3"/>
+          <circle cx="50" cy="55" r="28" fill="#fef3c7"/>
+          <path d="M22 50 C22 20, 78 20, 78 50 Q50 34 22 50 Z" fill="#451a03"/>
+          <polygon points="62,24 76,18 72,32" fill="#f43f5e"/>
+          <circle cx="39" cy="55" r="3" fill="#1f2937"/><circle cx="61" cy="55" r="3" fill="#1f2937"/>
+          <path d="M44 66 Q50 72 56 66" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>`;
+      }
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
+        <circle cx="20" cy="48" r="11" fill="#451a03"/><circle cx="80" cy="48" r="11" fill="#451a03"/>
+        <circle cx="50" cy="55" r="27" fill="#fef3c7"/>
+        <path d="M24 48 C24 22, 76 22, 76 48 Q50 34 24 48 Z" fill="#451a03"/>
+        <circle cx="39" cy="55" r="3" fill="#1f2937"/><circle cx="61" cy="55" r="3" fill="#1f2937"/>
+        <path d="M44 66 Q50 72 56 66" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>`;
+    }
+
+    function renderKidAvatarHTML(kid) {
+      if (kid.avatar && kid.avatar.startsWith("data:image")) {
+        return `<img src="${kid.avatar}" alt="${kid.name}" />`;
+      }
+      return getDemoKidSVG(kid.avatar || "demo_sis1");
+    }
+
+    function renderStampGraphic(stamp) {
+      const guardians = getAllGuardians();
+      const g = guardians[stamp.guardianId] || DEFAULT_GUARDIANS.dad;
+      if (stamp.mode === "fingerprint") {
+        return getFingerprintSVG(g.color);
+      }
+      return getGuardianSVG(g);
+    }
+
+    // === 取得合併後的資料 ===
+    function getAllGuardians() {
+      return { ...DEFAULT_GUARDIANS, ...(state.dbData.guardians || {}) };
+    }
+
+    function getActiveKids() {
+      const realKids = state.dbData.kids || {};
+      if (Object.keys(realKids).length > 0) return realKids;
+      return DEMO_KIDS;
+    }
+
+    function applyGuardianTheme(guardianId) {
+      const g = getAllGuardians()[guardianId] || DEFAULT_GUARDIANS.dad;
+      document.documentElement.style.setProperty("--theme-color", g.color);
+      document.documentElement.style.setProperty("--theme-bg", g.bg);
+    }
+
+    // === 圖片壓縮成 Base64（同步至 Firebase Realtime DB）===
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const size = 160;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+            resolve(canvas.toDataURL("image/jpeg", 0.72));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // === 頁面切換 ===
+    function showPage(pageName) {
+      document.getElementById("page-guardian").classList.toggle("hidden", pageName !== "guardian");
+      document.getElementById("page-kid").classList.toggle("hidden", pageName !== "kid");
+      document.getElementById("page-main").classList.toggle("hidden", pageName !== "main");
+      if (pageName !== "main") {
+        state.selectedStampIds.clear();
+        updateRedeemBar();
+      }
+      renderAll();
+    }
+
+    // === 渲染函式 ===
+    function renderAll() {
+      applyGuardianTheme(state.currentGuardianId);
+      renderGuardianPage();
+      renderKidPage();
+      if (state.currentKidId) {
+        const kids = getActiveKids();
+        if (!kids[state.currentKidId]) {
+          state.currentKidId = Object.keys(kids)[0] || null;
+        }
+        renderMainHeader();
+        renderTaskWall();
+        renderStampBank();
+        renderRedemptionHistory();
+      }
+    }
+
+    function renderGuardianPage() {
+      const grid = document.getElementById("guardian-grid");
+      const guardians = getAllGuardians();
+      grid.innerHTML = "";
+      Object.values(guardians).forEach((g) => {
+        const card = document.createElement("div");
+        card.className = `guardian-card ${g.id === state.currentGuardianId ? "selected" : ""}`;
+        card.innerHTML = `
+          <div class="guardian-avatar">${getGuardianSVG(g)}</div>
+          <div class="guardian-name">${g.name}</div>`;
+        card.onclick = () => {
+          state.currentGuardianId = g.id;
+          applyGuardianTheme(g.id);
+          renderGuardianPage();
+        };
+        grid.appendChild(card);
+      });
+
+      const addCard = document.createElement("div");
+      addCard.className = "guardian-card add-card";
+      addCard.innerHTML = `<div style="font-size:32px; line-height:1;">＋</div><div class="guardian-name" style="margin-top:6px;">新增身分</div>`;
+      addCard.onclick = openAddGuardianModal;
+      grid.appendChild(addCard);
+    }
+
+    function renderKidPage() {
+      const list = document.getElementById("kid-list");
+      const kids = getActiveKids();
+      list.innerHTML = "";
+      Object.values(kids).forEach((kid) => {
+        const card = document.createElement("div");
+        card.className = "kid-card";
+        card.innerHTML = `
+          <div class="kid-card-avatar">${renderKidAvatarHTML(kid)}</div>
+          <div class="kid-card-name">${kid.name}</div>
+          <div class="kid-card-age">${calcAge(kid.birthday)}</div>
+          ${kid.isDemo ? '<span class="demo-badge">測試用預設寶貝</span>' : ""}`;
+        card.onclick = () => {
+          state.currentKidId = kid.id;
+          state.viewDate = getTodayStr();
+          state.selectedStampIds.clear();
+          showPage("main");
+        };
+        list.appendChild(card);
+      });
+    }
+
+    function renderMainHeader() {
+      const kid = getActiveKids()[state.currentKidId];
+      const guardian = getAllGuardians()[state.currentGuardianId] || DEFAULT_GUARDIANS.dad;
+      if (!kid) return;
+      document.getElementById("header-kid-avatar").innerHTML = renderKidAvatarHTML(kid);
+      document.getElementById("header-kid-name").textContent = kid.name;
+      document.getElementById("header-guardian-tag").textContent = `關主：${guardian.name}`;
+    }
+
+    function renderTaskWall() {
+      const today = getTodayStr();
+      const isToday = state.viewDate === today;
+      const dow = getDayOfWeek(state.viewDate);
+
+      document.getElementById("display-date").innerHTML =
+        `${state.viewDate}${!isToday ? '<span class="readonly-tag">歷史唯讀</span>' : ""}`;
+      document.getElementById("display-weekday").textContent = WEEKDAYS[dow];
+      document.getElementById("btn-next-day").disabled = isToday;
+
+      const listEl = document.getElementById("task-wall-list");
+      const tasks = Object.values(state.dbData.tasks || {}).filter((t) => {
+        if (!t.kidIds || !t.kidIds.includes(state.currentKidId)) return false;
+        if (t.isSingle) return t.singleDate === state.viewDate;
+        return Array.isArray(t.weekdays) && t.weekdays.includes(dow);
+      });
+
+      const stamps = Object.values(state.dbData.stamps || {});
+
+      if (tasks.length === 0) {
+        listEl.innerHTML = `<div class="empty-hint">這一天還沒有安排任務喔！<br/>點右上角 ⚙️「添加任務」來新增吧</div>`;
+        return;
+      }
+
+      listEl.innerHTML = "";
+      tasks.forEach((task) => {
+        const existingStamp = stamps.find(
+          (s) => s.kidId === state.currentKidId && s.taskId === task.id && s.date === state.viewDate
+        );
+
+        const row = document.createElement("div");
+        row.className = "task-item";
+        row.innerHTML = `
+          <div class="task-info">
+            <div class="task-title">${task.name}</div>
+            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${existingStamp ? " · 連點兩下可取消" : ""}</div>
+          </div>`;
+
+        const box = document.createElement("div");
+        box.className = `stamp-box ${existingStamp ? "stamped" : ""} ${!isToday ? "readonly" : ""}`;
+        if (existingStamp) {
+          box.innerHTML = `<div class="stamp-anim">${renderStampGraphic(existingStamp)}</div>`;
+        }
+
+        if (isToday) {
+          box.onclick = () => handleStampClick(task, existingStamp);
+        }
+
+        row.appendChild(box);
+        listEl.appendChild(row);
+      });
+    }
+
+    function handleStampClick(task, existingStamp) {
+      const now = Date.now();
+      const tapKey = `${task.id}_${state.viewDate}`;
+
+      if (!existingStamp) {
+        // 尚未蓋章 -> 單擊立即蓋章
+        const stampId = uid("st");
+        const mode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
+        const newStamp = {
+          id: stampId,
+          kidId: state.currentKidId,
+          taskId: task.id,
+          date: state.viewDate,
+          guardianId: state.currentGuardianId,
+          mode,
+          timestamp: now,
+          redeemedId: null
+        };
+        set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), newStamp);
+        showToast("蓋章成功！");
+      } else {
+        // 已蓋章 -> 快速連點兩下取消
+        if (state.lastTap.key === tapKey && now - state.lastTap.time < 420) {
+          if (existingStamp.redeemedId) {
+            showToast("此圖章已兌換，無法直接取消");
+          } else {
+            remove(ref(db, `${ROOT_PATH}/stamps/${existingStamp.id}`));
+            showToast("已取消圖章");
+          }
+          state.lastTap = { key: null, time: 0 };
+        } else {
+          state.lastTap = { key: tapKey, time: now };
+          showToast("再點一下取消圖章");
+        }
+      }
+    }
+
+    function renderStampBank() {
+      const allKidStamps = Object.values(state.dbData.stamps || {})
+        .filter((s) => s.kidId === state.currentKidId)
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+      const available = allKidStamps.filter((s) => !s.redeemedId);
+      const redeemedCount = allKidStamps.length - available.length;
+
+      document.getElementById("stat-available").textContent = available.length;
+      document.getElementById("stat-redeemed").textContent = redeemedCount;
+      document.getElementById("stat-total").textContent = allKidStamps.length;
+
+      const grid = document.getElementById("stamp-bank-grid");
+      grid.innerHTML = "";
+
+      if (available.length === 0) {
+        grid.innerHTML = `<div class="empty-hint">目前還沒有可兌換的圖章，快去任務牆收集吧！</div>`;
+        state.selectedStampIds.clear();
+        updateRedeemBar();
+        return;
+      }
+
+      // 清理已不存在的選取 ID
+      const validIds = new Set(available.map((s) => s.id));
+      for (const id of state.selectedStampIds) {
+        if (!validIds.has(id)) state.selectedStampIds.delete(id);
+      }
+
+      available.forEach((stamp) => {
+        const cell = document.createElement("div");
+        cell.className = `bank-stamp-cell ${state.selectedStampIds.has(stamp.id) ? "selected" : ""}`;
+        cell.innerHTML = renderStampGraphic(stamp);
+        cell.onclick = () => {
+          if (state.selectedStampIds.has(stamp.id)) {
+            state.selectedStampIds.delete(stamp.id);
+          } else {
+            state.selectedStampIds.add(stamp.id);
+          }
+          cell.classList.toggle("selected");
+          updateRedeemBar();
+        };
+        grid.appendChild(cell);
+      });
+      updateRedeemBar();
+    }
+
+    function updateRedeemBar() {
+      const bar = document.getElementById("redeem-bar");
+      const count = state.selectedStampIds.size;
+      document.getElementById("selected-stamp-count").textContent = count;
+      bar.classList.toggle("hidden", count === 0 || state.currentTab !== "bank");
+    }
+
+    function renderRedemptionHistory() {
+      const listEl = document.getElementById("redemption-list");
+      const guardians = getAllGuardians();
+      const records = Object.values(state.dbData.redemptions || {})
+        .filter((r) => r.kidId === state.currentKidId)
+        .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      if (records.length === 0) {
+        listEl.innerHTML = `<div class="empty-hint">還沒有兌換紀錄喔！</div>`;
+        return;
+      }
+
+      const todayMs = new Date(getTodayStr()).getTime();
+      listEl.innerHTML = "";
+      records.forEach((rec) => {
+        const g = guardians[rec.guardianId] || DEFAULT_GUARDIANS.dad;
+        const recMs = new Date(rec.date).getTime();
+        const diffDays = (todayMs - recMs) / (1000 * 60 * 60 * 24);
+        const canCancel = diffDays <= 7;
+
+        const row = document.createElement("div");
+        row.className = "redemption-item";
+        row.style.backgroundColor = g.bg;
+        row.style.borderLeft = `6px solid ${g.color}`;
+        row.innerHTML = `
+          <div class="redemption-left">
+            <div class="redemption-title">${rec.itemName}</div>
+            <div class="redemption-meta">使用 <strong>${rec.count}</strong> 個圖章 · 關主：${g.name}</div>
+          </div>
+          <div class="redemption-right">
+            <span>${rec.date}</span>
+          </div>`;
+
+        if (canCancel) {
+          const cancelBtn = document.createElement("button");
+          cancelBtn.className = "cancel-redeem-btn";
+          cancelBtn.textContent = "X";
+          cancelBtn.title = "取消此筆兌換";
+          cancelBtn.onclick = () => cancelRedemption(rec);
+          row.querySelector(".redemption-right").appendChild(cancelBtn);
+        }
+        listEl.appendChild(row);
+      });
+    }
+
+    function cancelRedemption(rec) {
+      if (!confirm(`確定要取消「${rec.itemName}」並退回 ${rec.count} 個圖章嗎？`)) return;
+      const updates = {};
+      updates[`${ROOT_PATH}/redemptions/${rec.id}`] = null;
+      (rec.stampIds || []).forEach((sid) => {
+        updates[`${ROOT_PATH}/stamps/${sid}/redeemedId`] = null;
+      });
+      update(ref(db), updates);
+      showToast("已取消兌換並退回圖章");
+    }
+
+    // === Modal 控制 ===
+    function openModal(html) {
+      document.getElementById("modal-content").innerHTML = html;
+      document.getElementById("modal-overlay").classList.remove("hidden");
+    }
+    function closeModal() {
+      document.getElementById("modal-overlay").classList.add("hidden");
+    }
+    document.getElementById("modal-overlay").onclick = (e) => {
+      if (e.target.id === "modal-overlay") closeModal();
+    };
+
+    // 新增關主 Modal
+    function openAddGuardianModal() {
+      openModal(`
+        <h3 class="modal-title">新增關主身分</h3>
+        <div class="form-group">
+          <label class="form-label">關主稱呼</label>
+          <input type="text" id="new-guardian-name" class="form-input" placeholder="例如：舅舅、外婆、老師" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-save">新增</button>
+        </div>`);
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-save").onclick = () => {
+        const name = document.getElementById("new-guardian-name").value.trim();
+        if (!name) return showToast("請輸入關主稱呼");
+        const customCount = Object.keys(state.dbData.guardians || {}).length;
+        const palette = EXTRA_COLORS[customCount % EXTRA_COLORS.length];
+        const id = uid("g");
+        set(ref(db, `${ROOT_PATH}/guardians/${id}`), {
+          id, name, color: palette.color, bg: palette.bg, avatarType: "custom"
+        });
+        state.currentGuardianId = id;
+        closeModal();
+        showToast(`已新增關主：${name}`);
+      };
+    }
+
+    // 新增寶貝 Modal
+    function openAddKidModal() {
+      let uploadedBase64 = "";
+      openModal(`
+        <h3 class="modal-title">新增寶貝資料</h3>
+        <div class="form-group">
+          <label class="form-label">寶貝姓名</label>
+          <input type="text" id="kid-name-input" class="form-input" placeholder="請輸入名字" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">生日</label>
+          <input type="date" id="kid-birth-input" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">頭像照片上傳</label>
+          <input type="file" id="kid-photo-input" accept="image/*" class="form-input" />
+          <div id="kid-photo-preview" style="margin-top:8px; text-align:center;"></div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-save">儲存</button>
+        </div>`);
+
+      document.getElementById("kid-photo-input").onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        uploadedBase64 = await compressImageFile(file);
+        document.getElementById("kid-photo-preview").innerHTML =
+          `<img src="${uploadedBase64}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />`;
+      };
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-save").onclick = () => {
+        const name = document.getElementById("kid-name-input").value.trim();
+        const birthday = document.getElementById("kid-birth-input").value;
+        if (!name) return showToast("請輸入寶貝姓名");
+        const id = uid("kid");
+        set(ref(db, `${ROOT_PATH}/kids/${id}`), {
+          id, name, birthday, avatar: uploadedBase64 || "demo_sis1"
+        });
+        closeModal();
+        showToast(`已新增寶貝：${name}`);
+      };
+    }
+
+    // 齒輪設定 Modal
+    function openSettingsModal() {
+      const currentMode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
+      openModal(`
+        <h3 class="modal-title">設定選單</h3>
+        <button class="menu-list-btn" id="set-switch-guardian"><span>切換關主</span><span>›</span></button>
+        <button class="menu-list-btn" id="set-switch-kid"><span>切換寶貝</span><span>›</span></button>
+        <button class="menu-list-btn" id="set-add-task"><span>添加任務</span><span>＋</span></button>
+        <button class="menu-list-btn" id="set-stamp-mode">
+          <span>蓋章模式</span>
+          <span style="color:var(--theme-color);">${currentMode === "avatar" ? "關主圖示" : "指紋模式"}</span>
+        </button>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-close">關閉</button>
+        </div>`);
+
+      document.getElementById("m-close").onclick = closeModal;
+      document.getElementById("set-switch-guardian").onclick = openSwitchGuardianModal;
+      document.getElementById("set-switch-kid").onclick = openSwitchKidModal;
+      document.getElementById("set-add-task").onclick = openAddTaskModal;
+      document.getElementById("set-stamp-mode").onclick = () => {
+        const nextMode = currentMode === "avatar" ? "fingerprint" : "avatar";
+        set(ref(db, `${ROOT_PATH}/settings/stampMode`), nextMode);
+        showToast(`已切換為：${nextMode === "avatar" ? "關主圖示" : "指紋模式"}`);
+        closeModal();
+      };
+    }
+
+    function openSwitchGuardianModal() {
+      const guardians = Object.values(getAllGuardians());
+      openModal(`
+        <h3 class="modal-title">切換關主</h3>
+        <div id="sw-g-list"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" id="m-close">關閉</button></div>`);
+      const container = document.getElementById("sw-g-list");
+      guardians.forEach((g) => {
+        const btn = document.createElement("button");
+        btn.className = "menu-list-btn";
+        btn.style.borderLeft = `6px solid ${g.color}`;
+        btn.innerHTML = `<span>${g.name}</span><span>${g.id === state.currentGuardianId ? "目前使用" : ""}</span>`;
+        btn.onclick = () => {
+          state.currentGuardianId = g.id;
+          closeModal();
+          renderAll();
+          showToast(`已切換關主：${g.name}`);
+        };
+        container.appendChild(btn);
+      });
+      document.getElementById("m-close").onclick = closeModal;
+    }
+
+    function openSwitchKidModal() {
+      const kids = Object.values(getActiveKids());
+      openModal(`
+        <h3 class="modal-title">切換寶貝</h3>
+        <div id="sw-k-list"></div>
+        <div class="modal-actions"><button class="btn btn-secondary" id="m-close">關閉</button></div>`);
+      const container = document.getElementById("sw-k-list");
+      kids.forEach((k) => {
+        const btn = document.createElement("button");
+        btn.className = "menu-list-btn";
+        btn.innerHTML = `<span>${k.name}</span><span>${k.id === state.currentKidId ? "目前檢視" : ""}</span>`;
+        btn.onclick = () => {
+          state.currentKidId = k.id;
+          state.selectedStampIds.clear();
+          closeModal();
+          renderAll();
+          showToast(`已切換寶貝：${k.name}`);
+        };
+        container.appendChild(btn);
+      });
+      document.getElementById("m-close").onclick = closeModal;
+    }
+
+    function openAddTaskModal() {
+      const kids = Object.values(getActiveKids());
+      const daysOrder = [1, 2, 3, 4, 5, 6, 0];
+      openModal(`
+        <h3 class="modal-title">添加任務</h3>
+        <div class="form-group">
+          <label class="form-label">任務名稱</label>
+          <input type="text" id="task-name-input" class="form-input" placeholder="例如：自己刷牙、收拾玩具" />
+        </div>
+        <div class="form-group">
+          <label class="chip-check" style="background:#fef3c7; font-weight:700;">
+            <input type="checkbox" id="task-single-check" /> 單次任務（僅出現在今天）
+          </label>
+        </div>
+        <div class="form-group" id="weekday-group">
+          <label class="form-label">開放星期</label>
+          <div class="checkbox-grid">
+            ${daysOrder.map((d) => `
+              <label class="chip-check">
+                <input type="checkbox" class="wd-check" value="${d}" checked /> ${WEEKDAYS[d].replace("星期", "週")}
+              </label>`).join("")}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">分配給哪位寶貝（可複選）</label>
+          <div class="checkbox-grid">
+            ${kids.map((k) => `
+              <label class="chip-check">
+                <input type="checkbox" class="kid-check" value="${k.id}" ${k.id === state.currentKidId ? "checked" : ""} /> ${k.name}
+              </label>`).join("")}
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-save">新增任務</button>
+        </div>`);
+
+      document.getElementById("task-single-check").onchange = (e) => {
+        document.getElementById("weekday-group").classList.toggle("hidden", e.target.checked);
+      };
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-save").onclick = () => {
+        const name = document.getElementById("task-name-input").value.trim();
+        const isSingle = document.getElementById("task-single-check").checked;
+        const weekdays = [...document.querySelectorAll(".wd-check:checked")].map((el) => Number(el.value));
+        const kidIds = [...document.querySelectorAll(".kid-check:checked")].map((el) => el.value);
+
+        if (!name) return showToast("請輸入任務名稱");
+        if (!isSingle && weekdays.length === 0) return showToast("請至少勾選一天");
+        if (kidIds.length === 0) return showToast("請至少選擇一位寶貝");
+
+        const id = uid("task");
+        set(ref(db, `${ROOT_PATH}/tasks/${id}`), {
+          id, name, isSingle, singleDate: isSingle ? getTodayStr() : null, weekdays, kidIds
+        });
+        closeModal();
+        showToast("已新增任務！");
+      };
+    }
+
+    // 誰最疼我 Modal
+    function openWhoLovesMeModal() {
+      const guardians = getAllGuardians();
+      const counts = {};
+      Object.keys(guardians).forEach((gid) => (counts[gid] = 0));
+
+      Object.values(state.dbData.stamps || {})
+        .filter((s) => s.kidId === state.currentKidId)
+        .forEach((s) => {
+          counts[s.guardianId] = (counts[s.guardianId] || 0) + 1;
+        });
+
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      openModal(`
+        <h3 class="modal-title">💖 誰最疼我排行榜</h3>
+        <div>
+          ${sorted.map(([gid, cnt]) => {
+            const g = guardians[gid] || { name: "神秘關主", color: "#6b7280", bg: "#f3f4f6" };
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;margin-bottom:8px;border-radius:12px;background:${g.bg};">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <div style="width:36px;height:36px;">${getGuardianSVG(g)}</div>
+                  <strong>${g.name}</strong>
+                </div>
+                <strong style="font-size:18px;color:${g.color};">${cnt} 章</strong>
+              </div>`;
+          }).join("")}
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="m-ok">確認</button>
+        </div>`);
+      document.getElementById("m-ok").onclick = closeModal;
+    }
+
+    // 兌換確認 Modal
+    function openRedeemModal() {
+      const count = state.selectedStampIds.size;
+      openModal(`
+        <h3 class="modal-title">兌換獎勵（共 ${count} 個圖章）</h3>
+        <div class="form-group">
+          <label class="form-label">兌換項目</label>
+          <input type="text" id="redeem-item-input" class="form-input" placeholder="例如：看卡通30分鐘、買小貼紙" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm">確認</button>
+        </div>`);
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm").onclick = () => {
+        const itemName = document.getElementById("redeem-item-input").value.trim();
+        if (!itemName) return showToast("請輸入兌換項目名稱");
+        const stampIds = [...state.selectedStampIds];
+        const redId = uid("red");
+        const updates = {};
+        updates[`${ROOT_PATH}/redemptions/${redId}`] = {
+          id: redId,
+          kidId: state.currentKidId,
+          itemName,
+          count: stampIds.length,
+          stampIds,
+          date: getTodayStr(),
+          timestamp: Date.now(),
+          guardianId: state.currentGuardianId
+        };
+        stampIds.forEach((sid) => {
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemedId`] = redId;
+        });
+        update(ref(db), updates);
+        state.selectedStampIds.clear();
+        closeModal();
+        showToast("兌換成功！");
+      };
+    }
+
+    // === 事件綁定 ===
+    document.getElementById("btn-confirm-guardian").onclick = () => showPage("kid");
+    document.getElementById("btn-back-guardian").onclick = () => showPage("guardian");
+    document.getElementById("btn-open-add-kid").onclick = openAddKidModal;
+    document.getElementById("btn-open-settings").onclick = openSettingsModal;
+    document.getElementById("btn-who-loves-me").onclick = openWhoLovesMeModal;
+    document.getElementById("btn-cancel-select").onclick = () => {
+      state.selectedStampIds.clear();
+      renderStampBank();
+    };
+    document.getElementById("btn-open-redeem-modal").onclick = openRedeemModal;
+
+    // 頁籤切換
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.onclick = () => {
+        state.currentTab = btn.dataset.tab;
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        document.getElementById("tab-tasks").classList.toggle("hidden", state.currentTab !== "tasks");
+        document.getElementById("tab-bank").classList.toggle("hidden", state.currentTab !== "bank");
+        document.getElementById("tab-history").classList.toggle("hidden", state.currentTab !== "history");
+        updateRedeemBar();
+      };
+    });
+
+    // 日期切換按鈕與左右滑動手勢
+    function shiftDate(delta) {
+      const target = addDays(state.viewDate, delta);
+      if (target > getTodayStr()) return;
+      state.viewDate = target;
+      renderTaskWall();
+    }
+    document.getElementById("btn-prev-day").onclick = () => shiftDate(-1);
+    document.getElementById("btn-next-day").onclick = () => shiftDate(1);
+
+    let touchStartX = 0, touchStartY = 0;
+    const taskTabEl = document.getElementById("tab-tasks");
+    taskTabEl.addEventListener("touchstart", (e) => {
+      touchStartX = e.changedTouches[0].clientX;
+      touchStartY = e.changedTouches[0].clientY;
+    }, { passive: true });
+    taskTabEl.addEventListener("touchend", (e) => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 0) shiftDate(-1); // 往右滑看過去
+        else shiftDate(1);         // 往左滑回今天
+      }
+    }, { passive: true });
+
+    // === 監聽 Firebase 即時資料 ===
+    onValue(ref(db, ROOT_PATH), (snapshot) => {
+      const val = snapshot.val() || {};
+      state.dbData = {
+        guardians: val.guardians || {},
+        kids: val.kids || {},
+        tasks: val.tasks || {},
+        stamps: val.stamps || {},
+        redemptions: val.redemptions || {},
+        settings: val.settings || { stampMode: "avatar" }
+      };
+      document.getElementById("sync-status").textContent = "雲端已即時同步";
+      renderAll();
+    }, (err) => {
+      document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
+    });
+  </script>
+</body>
+</html>
