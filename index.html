@@ -291,19 +291,28 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
       background: rgba(255, 255, 255, 0.96);
       padding: 14px 16px;
       border-radius: var(--radius);
       margin-bottom: 12px;
       box-shadow: var(--shadow);
     }
-    .task-info { flex: 1; padding-right: 12px; }
+    .task-info { flex: 1; min-width: 140px; }
     .task-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
     .task-meta { font-size: 12px; color: var(--text-sub); }
 
+    .stamp-boxes-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
     .stamp-box {
-      width: 62px;
-      height: 62px;
+      width: 58px;
+      height: 58px;
       border: 2.5px dashed #cbd5e1;
       border-radius: 14px;
       display: flex;
@@ -322,8 +331,8 @@
     }
     .stamp-box.readonly { cursor: default; opacity: 0.85; }
     .stamp-anim {
-      width: 56px;
-      height: 56px;
+      width: 52px;
+      height: 52px;
       animation: stampPop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.28);
     }
     @keyframes stampPop {
@@ -503,6 +512,7 @@
       border: 1.5px solid #d1d5db;
       border-radius: 10px;
       font-size: 15px;
+      background: #fff;
     }
     .checkbox-grid {
       display: flex;
@@ -533,6 +543,36 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+    }
+    .setting-select-box {
+      width: 100%;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border-radius: 12px;
+      border: 1.5px solid #e5e7eb;
+      background: #f9fafb;
+    }
+    .setting-select-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .setting-select {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1.5px solid #d1d5db;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--theme-color);
+      background: #fff;
+    }
+    .custom-stamp-upload {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e5e7eb;
     }
     .modal-actions {
       display: flex;
@@ -709,7 +749,7 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar" } },
+      dbData: { guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar", customStampImage: "" } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentTab: "tasks",
@@ -762,7 +802,7 @@
       return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     }
 
-    // === Q版專屬 SVG 頭像與指紋產生器 ===
+    // === Q版專屬 SVG 頭像、指紋與愛心產生器 ===
     function getGuardianSVG(guardian) {
       const c = guardian.color || "#3b82f6";
       const type = guardian.avatarType || "custom";
@@ -838,6 +878,13 @@
       </svg>`;
     }
 
+    function getHeartSVG(color) {
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <path d="M50 86 C50 86 12 61 12 34 C12 20 23 11 35 11 C43 11 48 16 50 21 C52 16 57 11 65 11 C77 11 88 20 88 34 C88 61 50 86 50 86 Z" fill="${color}" />
+        <path d="M28 28 C24 31 23 36 24 41" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.55" />
+      </svg>`;
+    }
+
     function getDemoKidSVG(type) {
       if (type === "demo_sis1") {
         return `<svg viewBox="0 0 100 100" width="100%" height="100%">
@@ -871,6 +918,15 @@
       const g = guardians[stamp.guardianId] || DEFAULT_GUARDIANS.dad;
       if (stamp.mode === "fingerprint") {
         return getFingerprintSVG(g.color);
+      }
+      if (stamp.mode === "heart") {
+        return getHeartSVG(g.color);
+      }
+      if (stamp.mode === "custom") {
+        const imgSrc = stamp.customImage || (state.dbData.settings && state.dbData.settings.customStampImage);
+        if (imgSrc) {
+          return `<img src="${imgSrc}" alt="自訂圖章" style="width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid ${g.color};" />`;
+        }
       }
       return getGuardianSVG(g);
     }
@@ -1029,7 +1085,8 @@
 
       listEl.innerHTML = "";
       tasks.forEach((task) => {
-        const existingStamp = stamps.find(
+        const stampCount = Math.max(1, Number(task.stampCount) || 1);
+        const taskStamps = stamps.filter(
           (s) => s.kidId === state.currentKidId && s.taskId === task.id && s.date === state.viewDate
         );
 
@@ -1038,39 +1095,52 @@
         row.innerHTML = `
           <div class="task-info">
             <div class="task-title">${task.name}</div>
-            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${existingStamp ? " · 連點兩下可取消" : ""}</div>
+            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
           </div>`;
 
-        const box = document.createElement("div");
-        box.className = `stamp-box ${existingStamp ? "stamped" : ""} ${!isToday ? "readonly" : ""}`;
-        if (existingStamp) {
-          box.innerHTML = `<div class="stamp-anim">${renderStampGraphic(existingStamp)}</div>`;
+        const boxesWrap = document.createElement("div");
+        boxesWrap.className = "stamp-boxes-wrap";
+
+        for (let slotIndex = 0; slotIndex < stampCount; slotIndex++) {
+          const existingStamp = taskStamps.find((s) => (s.slotIndex ?? 0) === slotIndex);
+          const box = document.createElement("div");
+          box.className = `stamp-box ${existingStamp ? "stamped" : ""} ${!isToday ? "readonly" : ""}`;
+          if (existingStamp) {
+            box.innerHTML = `<div class="stamp-anim">${renderStampGraphic(existingStamp)}</div>`;
+          }
+          if (isToday) {
+            box.onclick = () => handleStampClick(task, existingStamp, slotIndex);
+          }
+          boxesWrap.appendChild(box);
         }
 
-        if (isToday) {
-          box.onclick = () => handleStampClick(task, existingStamp);
-        }
-
-        row.appendChild(box);
+        row.appendChild(boxesWrap);
         listEl.appendChild(row);
       });
     }
 
-    function handleStampClick(task, existingStamp) {
+    function handleStampClick(task, existingStamp, slotIndex = 0) {
       const now = Date.now();
-      const tapKey = `${task.id}_${state.viewDate}`;
+      const tapKey = `${task.id}_${state.viewDate}_${slotIndex}`;
 
       if (!existingStamp) {
         // 尚未蓋章 -> 單擊立即蓋章
-        const stampId = uid("st");
         const mode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
+        const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
+        if (mode === "custom" && !customImg) {
+          showToast("請先到設定上傳自訂圖章圖案");
+          return;
+        }
+        const stampId = uid("st");
         const newStamp = {
           id: stampId,
           kidId: state.currentKidId,
           taskId: task.id,
+          slotIndex,
           date: state.viewDate,
           guardianId: state.currentGuardianId,
           mode,
+          customImage: mode === "custom" ? customImg : null,
           timestamp: now,
           redeemedId: null
         };
@@ -1289,15 +1359,30 @@
     // 齒輪設定 Modal
     function openSettingsModal() {
       const currentMode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
+      const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
       openModal(`
         <h3 class="modal-title">設定選單</h3>
         <button class="menu-list-btn" id="set-switch-guardian"><span>切換關主</span><span>›</span></button>
         <button class="menu-list-btn" id="set-switch-kid"><span>切換寶貝</span><span>›</span></button>
         <button class="menu-list-btn" id="set-add-task"><span>添加任務</span><span>＋</span></button>
-        <button class="menu-list-btn" id="set-stamp-mode">
-          <span>蓋章模式</span>
-          <span style="color:var(--theme-color);">${currentMode === "avatar" ? "關主圖示" : "指紋模式"}</span>
-        </button>
+        <div class="setting-select-box">
+          <div class="setting-select-row">
+            <span>蓋章模式</span>
+            <select id="set-stamp-mode-select" class="setting-select">
+              <option value="avatar" ${currentMode === "avatar" ? "selected" : ""}>關主圖示</option>
+              <option value="fingerprint" ${currentMode === "fingerprint" ? "selected" : ""}>指紋模式</option>
+              <option value="heart" ${currentMode === "heart" ? "selected" : ""}>愛心模式</option>
+              <option value="custom" ${currentMode === "custom" ? "selected" : ""}>上傳圖案</option>
+            </select>
+          </div>
+          <div id="custom-stamp-upload-area" class="custom-stamp-upload ${currentMode === "custom" ? "" : "hidden"}">
+            <label class="form-label" style="font-size:13px;">上傳自訂圖章樣式</label>
+            <input type="file" id="custom-stamp-file" accept="image/*" class="form-input" style="font-size:13px; padding:8px;" />
+            <div id="custom-stamp-preview" style="margin-top:10px; text-align:center;">
+              ${customImg ? `<img src="${customImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid var(--theme-color);" />` : '<span style="font-size:12px;color:#6b7280;">尚未上傳圖案</span>'}
+            </div>
+          </div>
+        </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-close">關閉</button>
         </div>`);
@@ -1306,11 +1391,26 @@
       document.getElementById("set-switch-guardian").onclick = openSwitchGuardianModal;
       document.getElementById("set-switch-kid").onclick = openSwitchKidModal;
       document.getElementById("set-add-task").onclick = openAddTaskModal;
-      document.getElementById("set-stamp-mode").onclick = () => {
-        const nextMode = currentMode === "avatar" ? "fingerprint" : "avatar";
+
+      const modeSelect = document.getElementById("set-stamp-mode-select");
+      const uploadArea = document.getElementById("custom-stamp-upload-area");
+      const modeNames = { avatar: "關主圖示", fingerprint: "指紋模式", heart: "愛心模式", custom: "上傳圖案" };
+
+      modeSelect.onchange = () => {
+        const nextMode = modeSelect.value;
         set(ref(db, `${ROOT_PATH}/settings/stampMode`), nextMode);
-        showToast(`已切換為：${nextMode === "avatar" ? "關主圖示" : "指紋模式"}`);
-        closeModal();
+        uploadArea.classList.toggle("hidden", nextMode !== "custom");
+        showToast(`已切換為：${modeNames[nextMode]}`);
+      };
+
+      document.getElementById("custom-stamp-file").onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const base64 = await compressImageFile(file);
+        set(ref(db, `${ROOT_PATH}/settings/customStampImage`), base64);
+        document.getElementById("custom-stamp-preview").innerHTML =
+          `<img src="${base64}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid var(--theme-color);" />`;
+        showToast("自訂圖章上傳成功！");
       };
     }
 
@@ -1370,6 +1470,12 @@
           <input type="text" id="task-name-input" class="form-input" placeholder="例如：自己刷牙、收拾玩具" />
         </div>
         <div class="form-group">
+          <label class="form-label">可獲得印章數量</label>
+          <select id="task-stamp-count" class="form-input">
+            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}">${n} 個印章</option>`).join("")}
+          </select>
+        </div>
+        <div class="form-group">
           <label class="chip-check" style="background:#fef3c7; font-weight:700;">
             <input type="checkbox" id="task-single-check" /> 單次任務（僅出現在今天）
           </label>
@@ -1403,6 +1509,7 @@
       document.getElementById("m-cancel").onclick = closeModal;
       document.getElementById("m-save").onclick = () => {
         const name = document.getElementById("task-name-input").value.trim();
+        const stampCount = Number(document.getElementById("task-stamp-count").value) || 1;
         const isSingle = document.getElementById("task-single-check").checked;
         const weekdays = [...document.querySelectorAll(".wd-check:checked")].map((el) => Number(el.value));
         const kidIds = [...document.querySelectorAll(".kid-check:checked")].map((el) => el.value);
@@ -1413,7 +1520,7 @@
 
         const id = uid("task");
         set(ref(db, `${ROOT_PATH}/tasks/${id}`), {
-          id, name, isSingle, singleDate: isSingle ? getTodayStr() : null, weekdays, kidIds
+          id, name, stampCount, isSingle, singleDate: isSingle ? getTodayStr() : null, weekdays, kidIds
         });
         closeModal();
         showToast("已新增任務！");
@@ -1552,7 +1659,7 @@
         tasks: val.tasks || {},
         stamps: val.stamps || {},
         redemptions: val.redemptions || {},
-        settings: val.settings || { stampMode: "avatar" }
+        settings: val.settings || { stampMode: "avatar", customStampImage: "" }
       };
       document.getElementById("sync-status").textContent = "雲端已即時同步";
       renderAll();
