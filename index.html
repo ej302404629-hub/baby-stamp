@@ -3,7 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>寶貝集章小幫手</title>
+  <title>寶貝好棒棒</title>
+  <!-- 桌面捷徑圖示 -->
+  <link rel="icon" type="image/png" href="icon.png" />
+  <link rel="apple-touch-icon" href="icon.png" />
+
+  <!-- 從桌面開啟時隱藏瀏覽器網址列（像原生 App） -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="寶貝集章" />
+  <meta name="theme-color" content="#3b82f6" />
+  
   <style>
     :root {
       --theme-color: #3b82f6;
@@ -230,35 +240,92 @@
       gap: 10px;
     }
     .header-avatar {
-      width: 46px;
-      height: 46px;
+      width: 58px;
+      height: 58px;
+      position: relative;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .header-avatar-inner {
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
-      border: 2px solid var(--theme-color);
       overflow: hidden;
       background: #f3f4f6;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .header-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
+    
+    /* 寶貝等級外框 (20 個等級的 CSS 設計) */
+    .avatar-frame {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      background-size: contain;
+      background-position: center;
+      background-repeat: no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* 20款等級外框 svg 動態生成在 getFrameSVG 中，這裡加一些通用陰影與動態 */
+    .lvl-border {
+      position: absolute;
+      top: -2px; left: -2px; right: -2px; bottom: -2px;
+      border-radius: 50%;
+    }
+
     .header-kid-info { display: flex; flex-direction: column; }
+    .header-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
     .header-kid-name { font-size: 17px; font-weight: 800; line-height: 1.2; }
+    
+    .lvl-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 6px;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+      border: 1px solid #fef3c7;
+      user-select: none;
+    }
+    .lvl-badge:active { transform: scale(0.92); }
+
     .header-guardian-tag {
       font-size: 12px;
       color: var(--theme-color);
       font-weight: 700;
     }
     .gear-btn {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
-      border: none;
-      background: #f3f4f6;
-      font-size: 20px;
+      border: 2px solid #dcd5cc;
+      background: #f5f1eb;
+      padding: 5px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+    .gear-btn:active {
+      transform: scale(0.92) rotate(18deg);
     }
 
     /* 頁籤列 */
@@ -786,6 +853,150 @@
       flex: 1;
       accent-color: var(--theme-color);
     }
+    /* 新增關主：頭像與網路安全色票選擇器 */
+    .guardian-preview-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      transition: background-color 0.2s ease;
+    }
+    .guardian-preview-avatar {
+      width: 64px;
+      height: 64px;
+      flex-shrink: 0;
+    }
+    .avatar-cat-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .avatar-cat-btn {
+      flex: 1;
+      border: 1.5px solid #e5e7eb;
+      background: #f9fafb;
+      padding: 7px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #4b5563;
+      cursor: pointer;
+    }
+    .avatar-cat-btn.active {
+      background: var(--theme-color);
+      border-color: var(--theme-color);
+      color: #fff;
+    }
+    .avatar-picker-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .avatar-pick-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5px 2px;
+      border-radius: 12px;
+      border: 2px solid transparent;
+      background: #f9fafb;
+      cursor: pointer;
+      transition: transform 0.12s, border-color 0.2s;
+    }
+    .avatar-pick-item:active { transform: scale(0.94); }
+    .avatar-pick-item.selected {
+      border-color: var(--theme-color);
+      background: #eff6ff;
+    }
+    .avatar-pick-svg {
+      width: 44px;
+      height: 44px;
+    }
+    .avatar-pick-label {
+      font-size: 11px;
+      color: #4b5563;
+      margin-top: 2px;
+      font-weight: 600;
+    }
+    .websafe-palette {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 4px;
+      max-height: 148px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+    .color-swatch {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 6px;
+      border: 1px solid rgba(0, 0, 0, 0.14);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .color-swatch.selected {
+      transform: scale(1.18);
+      outline: 2.5px solid #111827;
+      outline-offset: 1px;
+      z-index: 2;
+    }
+    
+    /* 20個等級外框總覽卡片 Grid */
+    .frames-overview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .frame-overview-card {
+      background: #f9fafb;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 6px 4px;
+      text-align: center;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.12s;
+    }
+    .frame-overview-card:active { transform: scale(0.95); }
+    .frame-overview-card.active-current {
+      border-color: #f59e0b;
+      background: #fffbeb;
+      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+    }
+    .frame-overview-display {
+      width: 46px;
+      height: 46px;
+      margin: 0 auto 4px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .frame-overview-display-inner {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+    .frame-overview-display-inner img { width: 100%; height: 100%; object-fit: cover; }
+    .frame-overview-title {
+      font-size: 10px;
+      font-weight: 800;
+      color: #374151;
+      line-height: 1.1;
+    }
+    .frame-overview-desc {
+      font-size: 9px;
+      color: #6b7280;
+    }
 
     .modal-actions {
       display: flex;
@@ -846,13 +1057,30 @@
     <section id="page-main" class="hidden" style="display:flex; flex-direction:column; flex:1;">
       <header class="main-header">
         <div class="header-left">
-          <div class="header-avatar" id="header-kid-avatar"></div>
+          <div class="header-avatar" id="header-kid-avatar" title="長按更換頭貼"></div>
           <div class="header-kid-info">
-            <span class="header-kid-name" id="header-kid-name">寶貝</span>
+            <div class="header-name-row">
+              <span class="header-kid-name" id="header-kid-name">寶貝</span>
+              <span class="lvl-badge" id="header-lvl-badge">LVL 1</span>
+            </div>
             <span class="header-guardian-tag" id="header-guardian-tag">關主：爸爸</span>
           </div>
         </div>
-        <button class="gear-btn" id="btn-open-settings" title="設定">⚙️</button>
+        <button class="gear-btn" id="btn-open-settings" title="設定" aria-label="設定">
+          <svg viewBox="0 0 100 100" width="100%" height="100%">
+            <!-- 略帶不規則手繪感的莫蘭迪齒輪外框 -->
+            <path d="M44 12 C48 9, 55 10, 58 14 L61 21 C65 22, 68 24, 71 27 L78 24 C83 25, 87 30, 86 35 L81 42 C82 46, 83 50, 82 54 L88 59 C89 64, 86 70, 81 71 L74 70 C71 73, 68 76, 64 78 L65 86 C62 90, 55 91, 51 88 L47 82 C43 82, 39 81, 35 79 L29 84 C24 84, 19 80, 19 75 L23 68 C20 65, 18 61, 17 56 L11 54 C9 49, 10 43, 15 40 L21 38 C23 34, 25 30, 29 27 L27 20 C29 15, 35 13, 40 16 Z"
+              fill="#B7C4B8" stroke="#7A7267" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round" />
+            <!-- 內圈裝飾（暖燕麥色） -->
+            <path d="M51 31 C62 30, 70 39, 69 50 C68 61, 60 69, 49 69 C38 68, 30 60, 31 49 C32 38, 40 32, 51 31 Z"
+              fill="#F2ECE4" stroke="#7A7267" stroke-width="4" stroke-linecap="round" />
+            <!-- 中心圓點（莫蘭迪乾燥玫瑰色） -->
+            <path d="M50 42 C55 41, 59 46, 58 51 C57 56, 53 59, 48 58 C43 57, 41 53, 42 48 C43 44, 46 42, 50 42 Z"
+              fill="#CFA8A3" stroke="#7A7267" stroke-width="3.2" />
+            <!-- 童趣手繪小亮點 -->
+            <path d="M36 25 Q40 23 43 25" fill="none" stroke="#F7F4EF" stroke-width="3" stroke-linecap="round" />
+          </svg>
+        </button>
       </header>
 
       <nav class="tabs">
@@ -930,6 +1158,9 @@
     <div class="modal-box" id="modal-content"></div>
   </div>
 
+  <!-- 頭像更換隱藏上傳控制項 -->
+  <input type="file" id="kid-avatar-reupload-input" accept="image/*" class="hidden" />
+
   <div id="toast" class="toast"></div>
 
   <script type="module">
@@ -979,7 +1210,7 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {} } },
+      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, customFrames: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentTab: "tasks",
@@ -987,7 +1218,7 @@
       viewDate: getTodayStr(),
       selectedStampIds: new Set(),
       lastTap: { key: null, time: 0 },
-      editMode: null, // "guardian" | "kid" | "task" | "punished" | null
+      editMode: null, // "guardian" | "kid" | "task" | "punished" | "kid_avatar_reupload" | null
       editSelectedIds: new Set(),
       ignoreNextClick: false,
       customStampModalOpen: false,
@@ -1044,10 +1275,12 @@
       const allModes = (state.dbData.settings && state.dbData.settings.guardianModes) || {};
       const gSet = allModes[guardianId];
       if (gSet) {
+        const selId = gSet.selectedCustomStampId || "";
+        const csObj = selId && state.dbData.customStamps ? state.dbData.customStamps[selId] : null;
         return {
           stampMode: gSet.stampMode || "avatar",
-          selectedCustomStampId: gSet.selectedCustomStampId || "",
-          customStampImage: gSet.customStampImage || ""
+          selectedCustomStampId: selId,
+          customStampImage: (csObj && csObj.image) || gSet.customStampImage || ""
         };
       }
       return {
@@ -1055,6 +1288,52 @@
         selectedCustomStampId: "",
         customStampImage: ""
       };
+    }
+
+    // === 自動清理超過保留期（7天）的已兌換隱藏圖章，以及已無人使用的軟刪除自訂圖章 ===
+    function cleanupExpiredRedeemedStamps() {
+      const todayStr = getTodayStr();
+      const todayMs = new Date(todayStr).getTime();
+      const stampsMap = state.dbData.stamps || {};
+      const redemptionsMap = state.dbData.redemptions || {};
+      const customStampsMap = state.dbData.customStamps || {};
+      const updates = {};
+      const deletingStampIds = new Set();
+
+      Object.values(stampsMap).forEach((s) => {
+        if (!s || !s.redeemedId) return;
+        let isExpired = false;
+        if (s.redeemExpireDate) {
+          isExpired = todayStr > s.redeemExpireDate;
+        } else {
+          const recDate = s.redeemedDate || (redemptionsMap[s.redeemedId] && redemptionsMap[s.redeemedId].date);
+          if (recDate) {
+            const diffDays = (todayMs - new Date(recDate).getTime()) / (1000 * 60 * 60 * 24);
+            isExpired = diffDays > 7;
+          }
+        }
+        if (isExpired) {
+          updates[`${ROOT_PATH}/stamps/${s.id}`] = null;
+          deletingStampIds.add(s.id);
+        }
+      });
+
+      // 若有已隱藏（軟刪除）的自訂圖章，且清理後已沒有任何印章使用，則一併完整刪除
+      const usedCustomIds = new Set();
+      Object.values(stampsMap).forEach((s) => {
+        if (s && !deletingStampIds.has(s.id) && s.customStampId) {
+          usedCustomIds.add(s.customStampId);
+        }
+      });
+      Object.values(customStampsMap).forEach((cs) => {
+        if (cs && cs.hidden && !usedCustomIds.has(cs.id)) {
+          updates[`${ROOT_PATH}/customStamps/${cs.id}`] = null;
+        }
+      });
+
+      if (Object.keys(updates).length > 0) {
+        update(ref(db), updates);
+      }
     }
 
     // === 長按偵測與編輯模式管理 ===
@@ -1298,11 +1577,54 @@
             }
           });
         } else if (state.editMode === "kid") {
+          const deleteKidSet = new Set(ids);
+          const deletingStampIds = new Set();
+
           ids.forEach((id) => {
             if (DEMO_KIDS[id]) {
               updates[`${ROOT_PATH}/deletedDemoKids/${id}`] = true;
             } else {
               updates[`${ROOT_PATH}/kids/${id}`] = null;
+            }
+          });
+
+          // 清除該寶貝的所有圖章（包含一般圖章、處罰圖章、已兌換圖章）
+          Object.values(state.dbData.stamps || {}).forEach((s) => {
+            if (s && deleteKidSet.has(s.kidId)) {
+              updates[`${ROOT_PATH}/stamps/${s.id}`] = null;
+              deletingStampIds.add(s.id);
+            }
+          });
+
+          // 清除該寶貝的所有兌換紀錄
+          Object.values(state.dbData.redemptions || {}).forEach((r) => {
+            if (r && deleteKidSet.has(r.kidId)) {
+              updates[`${ROOT_PATH}/redemptions/${r.id}`] = null;
+            }
+          });
+
+          // 從任務分配名單中移除該寶貝（若該任務已無其他寶貝，一併刪除該任務）
+          Object.values(state.dbData.tasks || {}).forEach((t) => {
+            if (t && Array.isArray(t.kidIds) && t.kidIds.some((kidId) => deleteKidSet.has(kidId))) {
+              const remainingKidIds = t.kidIds.filter((kidId) => !deleteKidSet.has(kidId));
+              if (remainingKidIds.length === 0) {
+                updates[`${ROOT_PATH}/tasks/${t.id}`] = null;
+              } else {
+                updates[`${ROOT_PATH}/tasks/${t.id}/kidIds`] = remainingKidIds;
+              }
+            }
+          });
+
+          // 清理已隱藏且不再被任何剩餘印章使用的自訂圖章
+          const usedCustomIds = new Set();
+          Object.values(state.dbData.stamps || {}).forEach((s) => {
+            if (s && !deletingStampIds.has(s.id) && s.customStampId) {
+              usedCustomIds.add(s.customStampId);
+            }
+          });
+          Object.values(customStampsMap).forEach((cs) => {
+            if (cs && cs.hidden && !usedCustomIds.has(cs.id)) {
+              updates[`${ROOT_PATH}/customStamps/${cs.id}`] = null;
             }
           });
         } else if (state.editMode === "task") {
@@ -1339,6 +1661,56 @@
     }
 
     // === Q版專屬 SVG 頭像、指紋、愛心與哭臉產生器 ===
+    const GUARDIAN_AVATAR_OPTIONS = {
+      humans: [
+        { type: "h_boy", label: "小男孩" },
+        { type: "h_girl", label: "小女孩" },
+        { type: "h_teacher", label: "老師" },
+        { type: "h_chef", label: "廚師" },
+        { type: "h_astronaut", label: "太空人" },
+        { type: "h_princess", label: "公主" },
+        { type: "h_hero", label: "超人" },
+        { type: "h_wizard", label: "魔法師" },
+        { type: "h_artist", label: "畫家" },
+        { type: "h_doctor", label: "醫生" }
+      ],
+      animals: [
+        { type: "a_trex", label: "霸王龍" },
+        { type: "a_cat", label: "小貓" },
+        { type: "a_dog", label: "小狗" },
+        { type: "a_panda", label: "熊貓" },
+        { type: "a_rabbit", label: "兔子" },
+        { type: "a_bear", label: "小熊" },
+        { type: "a_fox", label: "狐狸" },
+        { type: "a_lion", label: "獅子" },
+        { type: "a_frog", label: "青蛙" },
+        { type: "a_penguin", label: "企鵝" }
+      ]
+    };
+
+    function getWebSafeColors() {
+      const steps = ["00", "33", "66", "99", "CC", "FF"];
+      const colors = [];
+      for (const r of steps) {
+        for (const g of steps) {
+          for (const b of steps) {
+            colors.push(`#${r}${g}${b}`);
+          }
+        }
+      }
+      return colors;
+    }
+
+    function hexToSoftBg(hex) {
+      const clean = (hex || "#3399FF").replace("#", "");
+      const r = parseInt(clean.slice(0, 2), 16) || 0;
+      const g = parseInt(clean.slice(2, 4), 16) || 0;
+      const b = parseInt(clean.slice(4, 6), 16) || 0;
+      const mix = (ch) => Math.round(255 * 0.86 + ch * 0.14);
+      const toHex = (n) => n.toString(16).padStart(2, "0");
+      return `#${toHex(mix(r))}${toHex(mix(g))}${toHex(mix(b))}`;
+    }
+
     function getGuardianSVG(guardian) {
       const c = guardian.color || "#3b82f6";
       const type = guardian.avatarType || "custom";
@@ -1386,6 +1758,186 @@
           <circle cx="39" cy="54" r="2.8" fill="#1f2937"/><circle cx="61" cy="54" r="2.8" fill="#1f2937"/>
           <circle cx="24" cy="62" r="3" fill="#fbbf24"/><circle cx="76" cy="62" r="3" fill="#fbbf24"/>
           <path d="M43 65 Q50 72 57 65" fill="none" stroke="#ea580c" stroke-width="2.5" stroke-linecap="round"/>`;
+      // === 新增 10 款 Q 版人物 ===
+      } else if (type === "h_boy") {
+        face = `
+          <circle cx="50" cy="57" r="25" fill="#fde68a"/>
+          <path d="M24 46 C26 22, 74 22, 76 46 Z" fill="#3b82f6"/>
+          <path d="M20 46 Q50 40 84 46 Q68 50 20 46 Z" fill="#1d4ed8"/>
+          <circle cx="40" cy="56" r="2.8" fill="#1f2937"/><circle cx="60" cy="56" r="2.8" fill="#1f2937"/>
+          <circle cx="33" cy="62" r="3.5" fill="#fca5a5" opacity="0.65"/><circle cx="67" cy="62" r="3.5" fill="#fca5a5" opacity="0.65"/>
+          <path d="M43 67 Q50 73 57 67" fill="none" stroke="#92400e" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else if (type === "h_girl") {
+        face = `
+          <circle cx="20" cy="52" r="10" fill="#7c2d12"/><circle cx="80" cy="52" r="10" fill="#7c2d12"/>
+          <circle cx="50" cy="56" r="25" fill="#fef3c7"/>
+          <path d="M25 50 C25 24, 75 24, 75 50 Q50 36 25 50 Z" fill="#7c2d12"/>
+          <circle cx="28" cy="36" r="5" fill="#f43f5e"/><circle cx="72" cy="36" r="5" fill="#f43f5e"/>
+          <circle cx="40" cy="56" r="2.8" fill="#1f2937"/><circle cx="60" cy="56" r="2.8" fill="#1f2937"/>
+          <circle cx="33" cy="62" r="4" fill="#f9a8d4" opacity="0.7"/><circle cx="67" cy="62" r="4" fill="#f9a8d4" opacity="0.7"/>
+          <path d="M44 67 Q50 72 56 67" fill="none" stroke="#e11d48" stroke-width="2.4" stroke-linecap="round"/>`;
+      } else if (type === "h_teacher") {
+        face = `
+          <circle cx="50" cy="24" r="9" fill="#374151"/>
+          <circle cx="50" cy="56" r="25" fill="#fef3c7"/>
+          <path d="M25 50 C25 25, 75 25, 75 50 Q50 36 25 50 Z" fill="#374151"/>
+          <circle cx="39" cy="55" r="7" fill="none" stroke="#1f2937" stroke-width="2.2"/>
+          <circle cx="61" cy="55" r="7" fill="none" stroke="#1f2937" stroke-width="2.2"/>
+          <line x1="46" y1="55" x2="54" y2="55" stroke="#1f2937" stroke-width="2.2"/>
+          <circle cx="39" cy="55" r="2.2" fill="#1f2937"/><circle cx="61" cy="55" r="2.2" fill="#1f2937"/>
+          <path d="M44 68 Q50 73 56 68" fill="none" stroke="#b45309" stroke-width="2.3" stroke-linecap="round"/>`;
+      } else if (type === "h_chef") {
+        face = `
+          <path d="M30 40 C20 34, 24 20, 38 22 C42 12, 58 12, 62 22 C76 20, 80 34, 70 40 Z" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+          <rect x="30" y="36" width="40" height="8" rx="3" fill="#ffffff" stroke="#d1d5db" stroke-width="1.8"/>
+          <circle cx="50" cy="60" r="24" fill="#fde68a"/>
+          <circle cx="40" cy="59" r="2.8" fill="#1f2937"/><circle cx="60" cy="59" r="2.8" fill="#1f2937"/>
+          <circle cx="33" cy="64" r="3.8" fill="#fca5a5" opacity="0.7"/><circle cx="67" cy="64" r="3.8" fill="#fca5a5" opacity="0.7"/>
+          <path d="M43 69 Q50 75 57 69" fill="none" stroke="#92400e" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else if (type === "h_astronaut") {
+        face = `
+          <circle cx="50" cy="54" r="31" fill="#ffffff" stroke="#94a3b8" stroke-width="3"/>
+          <rect x="27" y="36" width="46" height="32" rx="15" fill="#1e293b"/>
+          <ellipse cx="38" cy="45" rx="6" ry="3" fill="#38bdf8" opacity="0.55" transform="rotate(-20 38 45)"/>
+          <circle cx="40" cy="54" r="3" fill="#fef08a"/><circle cx="60" cy="54" r="3" fill="#fef08a"/>
+          <path d="M45 61 Q50 65 55 61" fill="none" stroke="#fef08a" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "h_princess") {
+        face = `
+          <path d="M20 64 C20 26, 80 26, 80 64 C80 78, 68 84, 50 84 C32 84, 20 78, 20 64 Z" fill="#f59e0b"/>
+          <circle cx="50" cy="57" r="24" fill="#fef3c7"/>
+          <path d="M26 51 Q50 38 74 51 Q64 31 50 31 Q36 31 26 51 Z" fill="#f59e0b"/>
+          <path d="M35 32 L39 18 L50 26 L61 18 L65 32 Z" fill="#fde047" stroke="#eab308" stroke-width="1.8"/>
+          <circle cx="50" cy="27" r="2.5" fill="#ec4899"/>
+          <circle cx="40" cy="57" r="2.8" fill="#1f2937"/><circle cx="60" cy="57" r="2.8" fill="#1f2937"/>
+          <path d="M44 67 Q50 72 56 67" fill="none" stroke="#db2777" stroke-width="2.4" stroke-linecap="round"/>`;
+      } else if (type === "h_hero") {
+        face = `
+          <circle cx="50" cy="55" r="26" fill="#fde68a"/>
+          <path d="M24 48 C24 22, 76 22, 76 48 Q50 34 24 48 Z" fill="#1f2937"/>
+          <path d="M25 48 Q50 44 75 48 L72 60 Q50 56 28 60 Z" fill="#ef4444"/>
+          <circle cx="39" cy="53" r="4" fill="#ffffff"/><circle cx="61" cy="53" r="4" fill="#ffffff"/>
+          <circle cx="39" cy="53" r="2" fill="#111827"/><circle cx="61" cy="53" r="2" fill="#111827"/>
+          <path d="M43 68 Q50 74 57 68" fill="none" stroke="#92400e" stroke-width="2.5" stroke-linecap="round"/>`;
+      } else if (type === "h_wizard") {
+        face = `
+          <circle cx="50" cy="60" r="23" fill="#fef3c7"/>
+          <path d="M18 44 Q50 36 82 44 Q50 50 18 44 Z" fill="#6366f1"/>
+          <path d="M30 43 L50 12 L70 43 Z" fill="#4f46e5"/>
+          <polygon points="50,22 52,27 57,27 53,30 54,35 50,32 46,35 47,30 43,27 48,27" fill="#fde047"/>
+          <circle cx="41" cy="59" r="2.6" fill="#1f2937"/><circle cx="59" cy="59" r="2.6" fill="#1f2937"/>
+          <path d="M44 69 Q50 74 56 69" fill="none" stroke="#92400e" stroke-width="2.4" stroke-linecap="round"/>`;
+      } else if (type === "h_artist") {
+        face = `
+          <circle cx="50" cy="57" r="25" fill="#fef3c7"/>
+          <path d="M22 44 C18 24, 62 18, 78 36 C70 44, 34 46, 22 44 Z" fill="#ec4899"/>
+          <line x1="48" y1="22" x2="52" y2="16" stroke="#be185d" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="40" cy="57" r="2.8" fill="#1f2937"/><circle cx="60" cy="57" r="2.8" fill="#1f2937"/>
+          <circle cx="33" cy="63" r="3.8" fill="#fda4af" opacity="0.65"/><circle cx="67" cy="63" r="3.8" fill="#fda4af" opacity="0.65"/>
+          <path d="M44 68 Q50 73 56 68" fill="none" stroke="#9d174d" stroke-width="2.4" stroke-linecap="round"/>`;
+      } else if (type === "h_doctor") {
+        face = `
+          <circle cx="50" cy="57" r="25" fill="#fef3c7"/>
+          <path d="M25 50 C25 26, 75 26, 75 50 Q50 38 25 50 Z" fill="#475569"/>
+          <rect x="36" y="20" width="28" height="16" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+          <path d="M50 23 V33 M45 28 H55" stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="40" cy="57" r="2.8" fill="#1f2937"/><circle cx="60" cy="57" r="2.8" fill="#1f2937"/>
+          <path d="M44 68 Q50 73 56 68" fill="none" stroke="#92400e" stroke-width="2.4" stroke-linecap="round"/>`;
+      // === 新增 10 款 Q 版動物（含霸王龍）===
+      } else if (type === "a_trex") {
+        face = `
+          <!-- Q版霸王龍：可愛背刺、圓滾滾恐龍頭與呆萌小尖牙 -->
+          <polygon points="34,24 41,15 47,25" fill="#15803d"/>
+          <polygon points="48,22 56,14 61,24" fill="#15803d"/>
+          <polygon points="62,25 70,19 72,30" fill="#15803d"/>
+          <path d="M22 56 C22 30, 38 22, 54 22 C72 22, 82 33, 82 48 C82 58, 75 64, 65 65 L65 72 C65 78, 57 82, 46 82 C30 82, 22 72, 22 56 Z" fill="#4ade80" stroke="#15803d" stroke-width="2.5"/>
+          <path d="M26 64 C30 76, 46 80, 62 74 C56 68, 40 66, 26 64 Z" fill="#bbf7d0"/>
+          <circle cx="42" cy="43" r="6" fill="#ffffff"/><circle cx="43.5" cy="43" r="3.2" fill="#111827"/>
+          <circle cx="44.8" cy="41.5" r="1.1" fill="#ffffff"/>
+          <circle cx="66" cy="42" r="2.2" fill="#15803d"/><circle cx="73" cy="42" r="2" fill="#15803d"/>
+          <circle cx="34" cy="52" r="4" fill="#fca5a5" opacity="0.65"/>
+          <path d="M48 61 Q64 63 77 56" fill="none" stroke="#15803d" stroke-width="2.6" stroke-linecap="round"/>
+          <polygon points="56,61 60,67 63,61" fill="#ffffff"/>
+          <polygon points="66,60 70,66 73,59" fill="#ffffff"/>`;
+      } else if (type === "a_cat") {
+        face = `
+          <polygon points="24,44 26,20 44,34" fill="#fb923c"/><polygon points="76,44 74,20 56,34" fill="#fb923c"/>
+          <polygon points="28,40 29,26 40,35" fill="#fed7aa"/><polygon points="72,40 71,26 60,35" fill="#fed7aa"/>
+          <circle cx="50" cy="56" r="26" fill="#fb923c"/>
+          <ellipse cx="50" cy="62" rx="14" ry="10" fill="#ffedd5"/>
+          <circle cx="39" cy="52" r="3.2" fill="#1f2937"/><circle cx="61" cy="52" r="3.2" fill="#1f2937"/>
+          <polygon points="47,58 53,58 50,62" fill="#f43f5e"/>
+          <path d="M44 65 Q50 69 50 62 Q50 69 56 65" fill="none" stroke="#7c2d12" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="20" y1="56" x2="32" y2="58" stroke="#7c2d12" stroke-width="2"/><line x1="20" y1="63" x2="32" y2="62" stroke="#7c2d12" stroke-width="2"/>
+          <line x1="80" y1="56" x2="68" y2="58" stroke="#7c2d12" stroke-width="2"/><line x1="80" y1="63" x2="68" y2="62" stroke="#7c2d12" stroke-width="2"/>`;
+      } else if (type === "a_dog") {
+        face = `
+          <ellipse cx="23" cy="56" rx="10" ry="18" fill="#92400e" transform="rotate(15 23 56)"/>
+          <ellipse cx="77" cy="56" rx="10" ry="18" fill="#92400e" transform="rotate(-15 77 56)"/>
+          <circle cx="50" cy="55" r="26" fill="#fcd34d"/>
+          <circle cx="39" cy="50" r="8" fill="#b45309" opacity="0.45"/>
+          <ellipse cx="50" cy="63" rx="13" ry="9" fill="#fef3c7"/>
+          <circle cx="39" cy="51" r="3.2" fill="#1f2937"/><circle cx="61" cy="51" r="3.2" fill="#1f2937"/>
+          <ellipse cx="50" cy="59" rx="4.5" ry="3.2" fill="#1f2937"/>
+          <path d="M44 66 Q50 71 56 66" fill="none" stroke="#78350f" stroke-width="2.3" stroke-linecap="round"/>`;
+      } else if (type === "a_panda") {
+        face = `
+          <circle cx="28" cy="32" r="10" fill="#1f2937"/><circle cx="72" cy="32" r="10" fill="#1f2937"/>
+          <circle cx="50" cy="56" r="27" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+          <ellipse cx="38" cy="54" rx="8" ry="10" fill="#1f2937" transform="rotate(-15 38 54)"/>
+          <ellipse cx="62" cy="54" rx="8" ry="10" fill="#1f2937" transform="rotate(15 62 54)"/>
+          <circle cx="39" cy="53" r="2.6" fill="#ffffff"/><circle cx="61" cy="53" r="2.6" fill="#ffffff"/>
+          <ellipse cx="50" cy="63" rx="4" ry="2.8" fill="#1f2937"/>
+          <path d="M44 69 Q50 73 56 69" fill="none" stroke="#1f2937" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "a_rabbit") {
+        face = `
+          <ellipse cx="36" cy="28" rx="8" ry="19" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+          <ellipse cx="64" cy="28" rx="8" ry="19" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+          <ellipse cx="36" cy="29" rx="4" ry="13" fill="#fbcfe8"/><ellipse cx="64" cy="29" rx="4" ry="13" fill="#fbcfe8"/>
+          <circle cx="50" cy="60" r="24" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+          <circle cx="40" cy="58" r="3" fill="#1f2937"/><circle cx="60" cy="58" r="3" fill="#1f2937"/>
+          <circle cx="32" cy="64" r="4" fill="#fbcfe8"/><circle cx="68" cy="64" r="4" fill="#fbcfe8"/>
+          <polygon points="47,63 53,63 50,66" fill="#f472b6"/>
+          <path d="M45 69 Q50 73 55 69" fill="none" stroke="#9d174d" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "a_bear") {
+        face = `
+          <circle cx="27" cy="34" r="10" fill="#92400e"/><circle cx="73" cy="34" r="10" fill="#92400e"/>
+          <circle cx="27" cy="34" r="5" fill="#d97706"/><circle cx="73" cy="34" r="5" fill="#d97706"/>
+          <circle cx="50" cy="56" r="26" fill="#b45309"/>
+          <ellipse cx="50" cy="63" rx="12" ry="9" fill="#fde68a"/>
+          <circle cx="39" cy="52" r="3" fill="#1f2937"/><circle cx="61" cy="52" r="3" fill="#1f2937"/>
+          <ellipse cx="50" cy="60" rx="4.2" ry="3" fill="#451a03"/>
+          <path d="M45 66 Q50 70 55 66" fill="none" stroke="#451a03" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "a_fox") {
+        face = `
+          <polygon points="22,46 24,18 45,35" fill="#ea580c"/><polygon points="78,46 76,18 55,35" fill="#ea580c"/>
+          <polygon points="27,41 28,25 40,35" fill="#fef3c7"/><polygon points="73,41 72,25 60,35" fill="#fef3c7"/>
+          <path d="M22 54 C22 34, 78 34, 78 54 C78 68, 62 80, 50 80 C38 80, 22 68, 22 54 Z" fill="#f97316"/>
+          <path d="M24 58 Q38 58 50 79 Q62 58 76 58 C74 70, 61 80, 50 80 C39 80, 26 70, 24 58 Z" fill="#ffffff"/>
+          <circle cx="39" cy="54" r="3" fill="#1f2937"/><circle cx="61" cy="54" r="3" fill="#1f2937"/>
+          <circle cx="50" cy="68" r="3.5" fill="#1f2937"/>`;
+      } else if (type === "a_lion") {
+        face = `
+          <circle cx="50" cy="54" r="33" fill="#d97706"/>
+          <circle cx="30" cy="34" r="8" fill="#fbbf24"/><circle cx="70" cy="34" r="8" fill="#fbbf24"/>
+          <circle cx="50" cy="56" r="22" fill="#fde68a"/>
+          <circle cx="41" cy="53" r="3" fill="#1f2937"/><circle cx="59" cy="53" r="3" fill="#1f2937"/>
+          <polygon points="46,59 54,59 50,63" fill="#92400e"/>
+          <path d="M44 67 Q50 71 56 67" fill="none" stroke="#92400e" stroke-width="2.2" stroke-linecap="round"/>`;
+      } else if (type === "a_frog") {
+        face = `
+          <circle cx="34" cy="36" r="11" fill="#4ade80"/><circle cx="66" cy="36" r="11" fill="#4ade80"/>
+          <ellipse cx="50" cy="58" rx="28" ry="22" fill="#4ade80"/>
+          <circle cx="34" cy="36" r="6" fill="#ffffff"/><circle cx="66" cy="36" r="6" fill="#ffffff"/>
+          <circle cx="34" cy="36" r="3.2" fill="#111827"/><circle cx="66" cy="36" r="3.2" fill="#111827"/>
+          <circle cx="30" cy="60" r="4.5" fill="#fda4af" opacity="0.7"/><circle cx="70" cy="60" r="4.5" fill="#fda4af" opacity="0.7"/>
+          <path d="M36 62 Q50 74 64 62" fill="none" stroke="#166534" stroke-width="2.8" stroke-linecap="round"/>`;
+      } else if (type === "a_penguin") {
+        face = `
+          <circle cx="50" cy="55" r="28" fill="#334155"/>
+          <path d="M28 58 C28 40, 44 40, 50 48 C56 40, 72 40, 72 58 C72 74, 62 81, 50 81 C38 81, 28 74, 28 58 Z" fill="#ffffff"/>
+          <circle cx="39" cy="54" r="3.2" fill="#111827"/><circle cx="61" cy="54" r="3.2" fill="#111827"/>
+          <circle cx="32" cy="61" r="4" fill="#fca5a5" opacity="0.65"/><circle cx="68" cy="61" r="4" fill="#fca5a5" opacity="0.65"/>
+          <polygon points="44,61 56,61 50,69" fill="#f59e0b"/>`;
       } else {
         face = `
           <circle cx="50" cy="55" r="26" fill="#fef3c7"/>
@@ -1460,6 +2012,101 @@
       return getDemoKidSVG(kid.avatar || "demo_sis1");
     }
 
+    // === 20 個級別的裝飾外框 SVG 獲取函式 (隨著等級越高越厲害，加入動態、漸變與細節) ===
+    const FRAME_LEVEL_NAMES = [
+      "新手木框", "頑鐵鋼框", "青銅小將", "勇氣精鐵", "白銀騎士",
+      "榮耀鎢金", "黃金聖殿", "璀璨翡翠", "暗影紫晶", "皇家寶石",
+      "熾熱熔岩", "幻影星辰", "不朽黎明", "魔幻雷霆", "極致星空",
+      "神話龍魂", "聖域羽翼", "秩序史詩", "永恆主宰", "終極至尊"
+    ];
+
+    function getFrameSVG(lvl) {
+      const customFrame = state.dbData.customFrames && state.dbData.customFrames[lvl];
+      if (customFrame && customFrame.image) {
+        return `<img src="${customFrame.image}" alt="LVL ${lvl} 外框" style="width:100%;height:100%;object-fit:contain;pointer-events:none;" />`;
+      }
+      if (lvl <= 1) {
+        // Lv 1: 基礎木框
+        return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#8B5A2B" stroke-width="4.5" stroke-dasharray="32 4"/></svg>`;
+      }
+      if (lvl === 2) {
+        // Lv 2: 頑鐵
+        return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#4B5563" stroke-width="5" stroke-linecap="round"/><circle cx="50" cy="50" r="41" fill="none" stroke="#9CA3AF" stroke-width="1.5"/></svg>`;
+      }
+      if (lvl === 3) {
+        // Lv 3: 青銅
+        return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#CD7F32" stroke-width="5.5"/><circle cx="50" cy="50" r="40" fill="none" stroke="#A0522D" stroke-width="1"/><path d="M38 12 L50 4 L62 12" fill="none" stroke="#CD7F32" stroke-width="3" stroke-linecap="round"/></svg>`;
+      }
+      if (lvl === 4) {
+        // Lv 4: 精鐵
+        return `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="#374151" stroke-width="6"/><circle cx="50" cy="50" r="41" fill="none" stroke="#6B7280" stroke-width="2"/><circle cx="50" cy="9" r="4" fill="#D1D5DB"/></svg>`;
+      }
+      if (lvl === 5) {
+        // Lv 5: 白銀騎士
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g5" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#E5E7EB"/><stop offset="50%" stop-color="#9CA3AF"/><stop offset="100%" stop-color="#374151"/></linearGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="url(#g5)" stroke-width="6.5"/><path d="M50 4 L56 16 H44 Z" fill="#E5E7EB"/><circle cx="16" cy="74" r="3" fill="#9CA3AF"/><circle cx="84" cy="74" r="3" fill="#9CA3AF"/></svg>`;
+      }
+      if (lvl === 6) {
+        // Lv 6: 鎢金
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g6" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1F2937"/><stop offset="50%" stop-color="#4B5563"/><stop offset="100%" stop-color="#111827"/></linearGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="url(#g6)" stroke-width="7"/><circle cx="50" cy="50" r="40" fill="none" stroke="#D1D5DB" stroke-width="1.5" stroke-dasharray="8 8"/></svg>`;
+      }
+      if (lvl === 7) {
+        // Lv 7: 黃金
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g7" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FDE047"/><stop offset="50%" stop-color="#CA8A04"/><stop offset="100%" stop-color="#854D0E"/></linearGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="url(#g7)" stroke-width="7"/><path d="M50 3 L57 15 L50 11 L43 15 Z M15 75 L10 82 L19 82 Z M85 75 L90 82 L81 82 Z" fill="#FDE047"/></svg>`;
+      }
+      if (lvl === 8) {
+        // Lv 8: 翡翠
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g8" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10B981"/><stop offset="50%" stop-color="#047857"/><stop offset="100%" stop-color="#064E3B"/></linearGradient></defs><circle cx="50" cy="50" r="44" fill="none" stroke="url(#g8)" stroke-width="7.5"/><path d="M50 4 L53 14 H47 Z" fill="#6EE7B7"/><circle cx="20" cy="20" r="4" fill="#34D399"/><circle cx="80" cy="20" r="4" fill="#34D399"/></svg>`;
+      }
+      if (lvl === 9) {
+        // Lv 9: 紫晶
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g9" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="50%" stop-color="#6D28D9"/><stop offset="100%" stop-color="#4C1D95"/></linearGradient></defs><circle cx="50" cy="50" r="43" fill="none" stroke="url(#g9)" stroke-width="8"/><rect x="46" y="2" width="8" height="8" transform="rotate(45 50 6)" fill="#C084FC"/></svg>`;
+      }
+      if (lvl === 10) {
+        // Lv 10: 皇家寶石
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g10" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#3B82F6"/><stop offset="50%" stop-color="#1D4ED8"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="50" cy="50" r="43" fill="none" stroke="url(#g10)" stroke-width="8"/><path d="M50 2 L56 12 H44 Z M10 50 L18 45 V55 Z M90 50 L82 45 V55 Z" fill="#60A5FA"/><circle cx="50" cy="94" r="4.5" fill="#60A5FA"/></svg>`;
+      }
+      if (lvl === 11) {
+        // Lv 11: 熾熱熔岩
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g11" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#EF4444"/><stop offset="50%" stop-color="#B91C1C"/><stop offset="100%" stop-color="#7F1D1D"/></linearGradient></defs><circle cx="50" cy="50" r="43" fill="none" stroke="url(#g11)" stroke-width="8.5"/><path d="M50 3 L57 14 H43 Z M25 90 L30 80 L20 82 Z M75 90 L70 80 L80 82 Z" fill="#F87171"/><path d="M40 93 Q50 90 60 93" fill="none" stroke="#F59E0B" stroke-width="3"/></svg>`;
+      }
+      if (lvl === 12) {
+        // Lv 12: 幻影星辰
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g12" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#6366F1"/><stop offset="50%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#312E81"/></linearGradient></defs><circle cx="50" cy="50" r="43" fill="none" stroke="url(#g12)" stroke-width="9"/><polygon points="50,1 52,7 58,7 53,11 55,17 50,13 45,17 47,11 42,7 48,7" fill="#A5B4FC"/></svg>`;
+      }
+      if (lvl === 13) {
+        // Lv 13: 不朽黎明
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g13" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F59E0B"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#78350F"/></linearGradient></defs><circle cx="50" cy="50" r="42" fill="none" stroke="url(#g13)" stroke-width="9.5"/><path d="M42 3 L50 9 L58 3 L55 12 H45 Z" fill="#FBBF24"/><circle cx="16" cy="30" r="4.5" fill="#FBBF24"/><circle cx="84" cy="30" r="4.5" fill="#FBBF24"/><path d="M12 50 A 38 38 0 0 0 88 50" fill="none" stroke="#F59E0B" stroke-width="1.5"/></svg>`;
+      }
+      if (lvl === 14) {
+        // Lv 14: 魔幻雷霆
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g14" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="50%" stop-color="#4C1D95"/><stop offset="100%" stop-color="#06B6D4"/></linearGradient></defs><circle cx="50" cy="50" r="42" fill="none" stroke="url(#g14)" stroke-width="10" stroke-dasharray="14 4 4 4"/><path d="M50 3 L43 14 H57 L50 25" fill="#A78BFA"/><polygon points="46,12 54,12 48,22 56,22 43,36" fill="#22D3EE"/></svg>`;
+      }
+      if (lvl === 15) {
+        // Lv 15: 極致星空 (璀璨裝飾與重裝)
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g15" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#EC4899"/><stop offset="50%" stop-color="#6366F1"/><stop offset="100%" stop-color="#1E1B4B"/></linearGradient></defs><circle cx="50" cy="50" r="42" fill="none" stroke="url(#g15)" stroke-width="10.5"/><path d="M40 4 L50 14 L60 4 L55 18 H45 Z M10 40 L4 50 L10 60 Z M90 40 L96 50 L90 60 Z" fill="#F472B6"/><circle cx="20" cy="80" r="3.5" fill="#818CF8"/><circle cx="80" cy="80" r="3.5" fill="#818CF8"/></svg>`;
+      }
+      if (lvl === 16) {
+        // Lv 16: 神話龍魂 (帶角/翅、重金屬與雙角)
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g16" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#F43F5E"/><stop offset="50%" stop-color="#9F1239"/><stop offset="100%" stop-color="#4C0519"/></linearGradient></defs><circle cx="50" cy="50" r="41" fill="none" stroke="url(#g16)" stroke-width="11"/><path d="M30 4 Q50 20 70 4 L65 14 H35 Z" fill="#FB7185"/><path d="M6 36 C10 24 24 16 26 26 C20 30 14 42 12 50 Z M94 36 C90 24 76 16 74 26 C80 30 86 42 88 50 Z" fill="#FDA4AF"/><circle cx="50" cy="93" r="5" fill="#F43F5E"/></svg>`;
+      }
+      if (lvl === 17) {
+        // Lv 17: 聖域羽翼
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10B981"/><stop offset="30%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="50" cy="50" r="41" fill="none" stroke="url(#g17)" stroke-width="11.5"/><path d="M50 2 L58 13 L50 9 L42 13 Z M3 L50 A 42 42 0 0 0 97 50" fill="none" stroke="#60A5FA" stroke-width="2.5"/><path d="M12 40 C6 28 6 15 15 25 C14 34 18 40 22 45 Z M88 40 C94 28 94 15 85 25 C86 34 82 40 78 45 Z" fill="#93C5FD"/><polygon points="45,95 50,90 55,95" fill="#3B82F6"/></svg>`;
+      }
+      if (lvl === 18) {
+        // Lv 18: 秩序史詩
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g18" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FBBF24"/><stop offset="50%" stop-color="#D97706"/><stop offset="100%" stop-color="#0284C7"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#g18)" stroke-width="12"/><path d="M50 1 L58 14 H42 Z M8 50 L1 45 L5 60 Z M92 50 L99 45 L95 60 Z M50 99 L56 90 H44 Z" fill="#FCD34D"/><circle cx="22" cy="22" r="5" fill="#F59E0B"/><circle cx="78" cy="22" r="5" fill="#F59E0B"/><circle cx="22" cy="78" r="5" fill="#0284C7"/><circle cx="78" cy="78" r="5" fill="#0284C7"/></svg>`;
+      }
+      if (lvl === 19) {
+        // Lv 19: 永恆主宰 (重甲包覆與魔幻流光)
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g19" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#D946EF"/><stop offset="50%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#111827"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="none" stroke="url(#g19)" stroke-width="12"/><path d="M34 2 L50 14 L66 2 L56 16 H44 Z" fill="#F472B6"/><path d="M2 30 C12 12 24 16 16 32 C12 40 8 50 10 65 Z M98 30 C88 12 76 16 84 32 C88 40 92 50 90 65 Z" fill="#818CF8"/><path d="M40 94 L50 84 L60 94 Z" fill="#3B82F6"/><circle cx="50" cy="50" r="33" fill="none" stroke="#F472B6" stroke-width="1" stroke-dasharray="6 6"/></svg>`;
+      }
+      if (lvl >= 20) {
+        // Lv 20: 終極至尊 (尊爵金紅，帶全翼、寶石與神聖光芒)
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g20" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#EF4444"/><stop offset="35%" stop-color="#F59E0B"/><stop offset="70%" stop-color="#D97706"/><stop offset="100%" stop-color="#7F1D1D"/></linearGradient></defs><circle cx="50" cy="50" r="39" fill="none" stroke="url(#g20)" stroke-width="13"/><path d="M24 2 Q50 15 76 2 L65 17 H35 Z" fill="#FDE047"/><path d="M4 25 Q18 6 12 36 Q4 54 8 72 Z M96 25 Q82 6 88 36 Q96 54 92 72 Z" fill="#F87171"/><path d="M32 94 Q50 82 68 94 L50 82 Z" fill="#F59E0B"/><polygon points="50,9 53,16 60,16 55,20 57,27 50,23 43,27 45,20 40,16 47,16" fill="#FFFFFF"/><circle cx="16" cy="50" r="3.5" fill="#FFFFFF"/><circle cx="84" cy="50" r="3.5" fill="#FFFFFF"/></svg>`;
+      }
+    }
+
     function getGuardianForDisplay(id) {
       const custom = (state.dbData.guardians || {})[id];
       if (custom && !custom.deleted) return custom;
@@ -1476,8 +2123,9 @@
         return getHeartSVG(g.color);
       }
       if (stamp.mode === "custom") {
+        const csObj = stamp.customStampId && state.dbData.customStamps ? state.dbData.customStamps[stamp.customStampId] : null;
         const gSet = getGuardianStampSettings(stamp.guardianId);
-        const imgSrc = stamp.customImage || gSet.customStampImage || (state.dbData.settings && state.dbData.settings.customStampImage);
+        const imgSrc = (csObj && csObj.image) || stamp.customImage || gSet.customStampImage || (state.dbData.settings && state.dbData.settings.customStampImage);
         if (imgSrc) {
           return `<img src="${imgSrc}" alt="自訂圖章" style="width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid ${g.color};" />`;
         }
@@ -1512,7 +2160,7 @@
       document.documentElement.style.setProperty("--theme-bg", g.bg);
     }
 
-    // === 圖片壓縮成 Base64（同步至 Firebase Realtime DB）===
+    // === 圖片壓縮成 Base64（WebP 格式同步至 Firebase Realtime DB）===
     function compressImageFile(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1528,7 +2176,36 @@
             const sx = (img.width - minSide) / 2;
             const sy = (img.height - minSide) / 2;
             ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
-            resolve(canvas.toDataURL("image/jpeg", 0.72));
+            resolve(canvas.toDataURL("image/webp", 0.75));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // === 外框圖片壓縮（保留透明背景，輸出 WebP）===
+    function compressFrameImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const size = 200;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, size, size);
+            const scale = Math.min(size / img.width, size / img.height);
+            const drawW = img.width * scale;
+            const drawH = img.height * scale;
+            const dx = (size - drawW) / 2;
+            const dy = (size - drawH) / 2;
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+            resolve(canvas.toDataURL("image/webp", 0.85));
           };
           img.onerror = reject;
           img.src = e.target.result;
@@ -1551,6 +2228,24 @@
         updateRedeemBar();
       }
       renderAll();
+    }
+
+    // === 級數計算 ===
+    function getKidLevelAndTotal(kidId) {
+      const allKidStamps = Object.values(state.dbData.stamps || {})
+        .filter((s) => s.kidId === kidId);
+      const punishedCount = allKidStamps.filter((s) => Boolean(s.punishedDate)).length;
+      const availableCount = allKidStamps.filter((s) => !s.redeemedId && !s.punishedDate).length;
+      const redeemedCount = Object.values(state.dbData.redemptions || {})
+        .filter((r) => r.kidId === kidId)
+        .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
+      
+      const totalAfterPunish = availableCount + redeemedCount;
+      const threshold = Number(state.dbData.settings?.lvlThreshold) || 50;
+      const customLevels = Object.keys(state.dbData.customFrames || {}).map(Number).filter((n) => !isNaN(n));
+      const maxLevel = Math.max(20, ...customLevels);
+      const lvl = Math.max(1, Math.min(maxLevel, Math.floor(totalAfterPunish / threshold) + 1));
+      return { lvl, total: totalAfterPunish, threshold };
     }
 
     // === 渲染函式 ===
@@ -1631,12 +2326,19 @@
 
       kidArr.forEach((kid) => {
         const isEditSel = isEditing && state.editSelectedIds.has(kid.id);
+        const { lvl } = getKidLevelAndTotal(kid.id);
         const card = document.createElement("div");
         card.className = `kid-card ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
         card.innerHTML = `
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
-          <div class="kid-card-avatar">${renderKidAvatarHTML(kid)}</div>
-          <div class="kid-card-name">${kid.name}</div>
+          <!-- 這裡套用 SVG 等級外框 -->
+          <div class="kid-card-avatar" style="position:relative; width:88px; height:88px; border:none; border-radius:0; background:transparent;">
+            <div style="width:58px; height:58px; border-radius:50%; overflow:hidden; position:absolute; top:15px; left:15px;">
+              ${renderKidAvatarHTML(kid)}
+            </div>
+            <div class="avatar-frame" style="width:88px; height:88px;">${getFrameSVG(lvl)}</div>
+          </div>
+          <div class="kid-card-name">${kid.name} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
           ${kid.isDemo ? '<span class="demo-badge">測試用預設寶貝</span>' : ""}`;
 
@@ -1660,10 +2362,55 @@
       const kid = getActiveKids()[state.currentKidId];
       const guardian = getGuardianForDisplay(state.currentGuardianId);
       if (!kid) return;
-      document.getElementById("header-kid-avatar").innerHTML = renderKidAvatarHTML(kid);
+
+      const { lvl } = getKidLevelAndTotal(state.currentKidId);
+
+      // 左上角頭像：加入等級外框包覆，內圈顯示原頭像
+      const avatarContainer = document.getElementById("header-kid-avatar");
+      avatarContainer.innerHTML = `
+        <div class="header-avatar-inner">
+          ${renderKidAvatarHTML(kid)}
+        </div>
+        <div class="avatar-frame">${getFrameSVG(lvl)}</div>`;
+        
+      // 為左上角頭像綁定「長按進入更換頭照模式」
+      attachLongPress(avatarContainer, () => {
+        if (kid.isDemo) {
+          showToast("測試用預設寶貝不支援更換照片");
+          return;
+        }
+        state.editMode = "kid_avatar_reupload";
+        document.getElementById("kid-avatar-reupload-input").click();
+      });
+
       document.getElementById("header-kid-name").textContent = kid.name;
+      
+      const lvlBadge = document.getElementById("header-lvl-badge");
+      lvlBadge.textContent = `LVL ${lvl}`;
+      lvlBadge.onclick = openLevelFramesModal;
+
       document.getElementById("header-guardian-tag").textContent = `關主：${guardian.name}`;
     }
+
+    // 處理更換大頭照照片（包含自動刪除與更換記錄）
+    document.getElementById("kid-avatar-reupload-input").onchange = async (e) => {
+      if (state.editMode !== "kid_avatar_reupload" || !state.currentKidId) return;
+      const file = e.target.files[0];
+      if (!file) {
+        exitEditMode();
+        return;
+      }
+      try {
+        const base64Img = await compressImageFile(file);
+        // 更新大頭照：在 Firebase kids/[id]/avatar 直接覆寫，舊的照片紀錄在 RTDB 中自然被覆蓋即為刪除
+        await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), base64Img);
+        showToast("頭貼更換成功！");
+      } catch (err) {
+        showToast("頭貼更換失敗，請重試");
+      } finally {
+        exitEditMode();
+      }
+    };
 
     function renderTaskWall() {
       const today = getTodayStr();
@@ -1766,8 +2513,9 @@
       if (!existingStamp) {
         const gSettings = getGuardianStampSettings(state.currentGuardianId);
         const mode = gSettings.stampMode;
+        const customStampId = gSettings.selectedCustomStampId;
         const customImg = gSettings.customStampImage;
-        if (mode === "custom" && !customImg) {
+        if (mode === "custom" && !customStampId && !customImg) {
           showToast("請先到設定選擇或上傳自訂圖章");
           return;
         }
@@ -1780,11 +2528,22 @@
           date: state.viewDate,
           guardianId: state.currentGuardianId,
           mode,
-          customImage: mode === "custom" ? customImg : null,
+          customStampId: mode === "custom" ? (customStampId || null) : null,
           timestamp: now,
           redeemedId: null
         };
-        set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), newStamp);
+        set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), {
+          id: stampId,
+          kidId: state.currentKidId,
+          taskId: task.id,
+          slotIndex,
+          date: state.viewDate,
+          guardianId: state.currentGuardianId,
+          mode,
+          customStampId: mode === "custom" ? (customStampId || null) : null,
+          timestamp: now,
+          redeemedId: null
+        });
         showToast("蓋章成功！");
       } else {
         if (state.lastTap.key === tapKey && now - state.lastTap.time < 420) {
@@ -1812,7 +2571,9 @@
         .filter((s) => Boolean(s.punishedDate))
         .sort((a, b) => (a.punishedTimestamp || a.timestamp || 0) - (b.punishedTimestamp || b.timestamp || 0));
       const available = allKidStamps.filter((s) => !s.redeemedId && !s.punishedDate);
-      const redeemedCount = allKidStamps.filter((s) => Boolean(s.redeemedId) && !s.punishedDate).length;
+      const redeemedCount = Object.values(state.dbData.redemptions || {})
+        .filter((r) => r.kidId === state.currentKidId)
+        .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
       const totalAfterPunish = available.length + redeemedCount;
 
       document.getElementById("stat-available").textContent = available.length;
@@ -1959,6 +2720,8 @@
       updates[`${ROOT_PATH}/redemptions/${rec.id}`] = null;
       (rec.stampIds || []).forEach((sid) => {
         updates[`${ROOT_PATH}/stamps/${sid}/redeemedId`] = null;
+        updates[`${ROOT_PATH}/stamps/${sid}/redeemedDate`] = null;
+        updates[`${ROOT_PATH}/stamps/${sid}/redeemExpireDate`] = null;
       });
       update(ref(db), updates);
       showToast("已取消兌換並退回圖章");
@@ -1980,27 +2743,247 @@
       if (e.target.id === "modal-overlay") closeModal();
     };
 
+    // 等級外框全覽 Modal（支援點擊任一外框上傳替換、無限新增與恢復/刪除）
+    function openLevelFramesModal() {
+      const kid = getActiveKids()[state.currentKidId];
+      if (!kid) return;
+
+      const { lvl, total, threshold } = getKidLevelAndTotal(state.currentKidId);
+      const customFrames = state.dbData.customFrames || {};
+      const customLevels = Object.keys(customFrames).map(Number).filter((n) => !isNaN(n));
+      const maxLevel = Math.max(20, ...customLevels);
+      const nextLevel = maxLevel + 1;
+      let uploadTargetLevel = nextLevel;
+
+      let gridHTML = "";
+      for (let i = 1; i <= maxLevel; i++) {
+        const isCurrent = i === lvl;
+        const hasCustom = Boolean(customFrames[i] && customFrames[i].image);
+        const name = i > 20 ? (customFrames[i]?.name || "自訂外框") : (hasCustom ? "已自訂" : FRAME_LEVEL_NAMES[i - 1]);
+        gridHTML += `
+          <div class="frame-overview-card ${isCurrent ? 'active-current' : ''}" data-lvl="${i}" title="點擊上傳圖片替換 LVL ${i} 外框">
+            ${hasCustom ? `<button type="button" class="del-custom-frame-btn" data-lvl="${i}" title="${i <= 20 ? '恢復預設外框' : '刪除此自訂外框'}" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:900;cursor:pointer;z-index:5;line-height:1;">×</button>` : ""}
+            <div class="frame-overview-display">
+              <div class="frame-overview-display-inner">
+                ${renderKidAvatarHTML(kid)}
+              </div>
+              <div class="avatar-frame" style="width:46px; height:46px;">${getFrameSVG(i)}</div>
+            </div>
+            <div class="frame-overview-title" style="${isCurrent ? 'color:#f59e0b;' : ''}">LVL ${i}</div>
+            <div class="frame-overview-desc">${name}</div>
+          </div>`;
+      }
+
+      // 結尾加入「＋ 新增外框」卡片（支援超過 20 級無限新增）
+      gridHTML += `
+        <div class="frame-overview-card" id="btn-add-custom-frame" style="border:2px dashed #9ca3af; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:84px;">
+          <div style="font-size:24px; font-weight:800; color:#4b5563; line-height:1;">＋</div>
+          <div class="frame-overview-title" style="margin-top:4px;">LVL ${nextLevel}</div>
+          <div class="frame-overview-desc">上傳外框</div>
+        </div>`;
+
+      openModal(`
+        <h3 class="modal-title">寶貝等級外框 (共 ${maxLevel} 級)</h3>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:-8px 0 4px;">
+          累積總數 <strong>${total}</strong> 章 (目前為 <strong>LVL ${lvl}</strong>)
+        </p>
+        <p style="text-align:center; font-size:11px; color:#9ca3af; margin:0 0 14px;">
+          點擊任一外框可上傳圖片替換（支援去背 PNG / WebP）
+        </p>
+        <input type="file" id="m-custom-frame-input" accept="image/png,image/webp,image/*" class="hidden" />
+        <div class="frames-overview-grid">
+          ${gridHTML}
+        </div>
+        <div class="form-group" style="border-top:1px solid #e5e7eb; padding-top:14px; margin-top:14px;">
+          <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>設定多少章升一級</span>
+            <span style="font-size:12px; font-weight:normal; color:#6b7280;">(修改後將重新計算等級)</span>
+          </label>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <input type="number" id="m-lvl-threshold-input" class="form-input" style="width:120px;" value="${threshold}" min="1" />
+            <span style="font-size:14px; font-weight:700; color:#475569;">章 / 一級</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="m-lvl-confirm">確認關閉</button>
+        </div>`);
+
+      const fileInput = document.getElementById("m-custom-frame-input");
+
+      // 點擊各級數外框卡片上傳替換
+      document.querySelectorAll(".frame-overview-card[data-lvl]").forEach((card) => {
+        card.onclick = () => {
+          uploadTargetLevel = Number(card.dataset.lvl);
+          fileInput.value = "";
+          fileInput.click();
+        };
+      });
+
+      // 點擊「＋」新增下一級自訂外框
+      document.getElementById("btn-add-custom-frame").onclick = () => {
+        uploadTargetLevel = nextLevel;
+        fileInput.value = "";
+        fileInput.click();
+      };
+
+      fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const webpBase64 = await compressFrameImageFile(file);
+          await set(ref(db, `${ROOT_PATH}/customFrames/${uploadTargetLevel}`), {
+            level: uploadTargetLevel,
+            name: uploadTargetLevel > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[uploadTargetLevel - 1],
+            image: webpBase64,
+            timestamp: Date.now()
+          });
+          showToast(`已更新 LVL ${uploadTargetLevel} 外框！`);
+          openLevelFramesModal();
+        } catch (err) {
+          showToast("外框上傳失敗，請重試");
+        }
+      };
+
+      // 點擊右上角 × 恢復預設或刪除自訂外框
+      document.querySelectorAll(".del-custom-frame-btn").forEach((btn) => {
+        btn.onclick = async (e) => {
+          e.stopPropagation();
+          const targetLvl = Number(btn.dataset.lvl);
+          const msg = targetLvl <= 20
+            ? `確定要將 LVL ${targetLvl} 恢復為預設外框嗎？`
+            : `確定要刪除 LVL ${targetLvl} 的自訂外框嗎？`;
+          if (!confirm(msg)) return;
+          await remove(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`));
+          showToast(targetLvl <= 20 ? `已恢復 LVL ${targetLvl} 預設外框` : `已刪除 LVL ${targetLvl} 外框`);
+          openLevelFramesModal();
+        };
+      });
+
+      document.getElementById("m-lvl-confirm").onclick = () => {
+        const inputVal = Number(document.getElementById("m-lvl-threshold-input").value) || 50;
+        const currentThreshold = Number(state.dbData.settings?.lvlThreshold) || 50;
+        if (inputVal !== currentThreshold) {
+          set(ref(db, `${ROOT_PATH}/settings/lvlThreshold`), inputVal);
+          showToast(`升級門檻已設定為：每 ${inputVal} 章一級`);
+        }
+        closeModal();
+      };
+    }
+
     // 新增關主 Modal
     function openAddGuardianModal() {
+      let selectedAvatar = "h_boy";
+      let selectedCategory = "humans";
+      let selectedColor = "#3399FF";
+      const webSafeColors = getWebSafeColors();
+
       openModal(`
         <h3 class="modal-title">新增關主身分</h3>
+        <div class="guardian-preview-box" id="ng-preview-box">
+          <div class="guardian-preview-avatar" id="ng-preview-avatar"></div>
+          <div>
+            <div style="font-size:15px; font-weight:800;" id="ng-preview-name">新關主</div>
+            <div style="font-size:12px; color:#6b7280; margin-top:2px;">專屬色：<strong id="ng-preview-hex">${selectedColor}</strong></div>
+          </div>
+        </div>
         <div class="form-group">
           <label class="form-label">關主稱呼</label>
           <input type="text" id="new-guardian-name" class="form-input" placeholder="例如：舅舅、外婆、老師" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">選擇 Q 版頭像（20 款）</label>
+          <div class="avatar-cat-tabs">
+            <button type="button" class="avatar-cat-btn active" data-cat="humans">人物 (10)</button>
+            <button type="button" class="avatar-cat-btn" data-cat="animals">動物 (10)</button>
+          </div>
+          <div class="avatar-picker-grid" id="ng-avatar-grid"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">選擇專屬顏色（網路安全色票 216 色）</label>
+          <div class="websafe-palette" id="ng-color-palette"></div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-cancel">取消</button>
           <button class="btn btn-primary" id="m-save">新增</button>
         </div>`);
+
+      const nameInput = document.getElementById("new-guardian-name");
+      const previewBox = document.getElementById("ng-preview-box");
+      const previewAvatar = document.getElementById("ng-preview-avatar");
+      const previewName = document.getElementById("ng-preview-name");
+      const previewHex = document.getElementById("ng-preview-hex");
+      const avatarGrid = document.getElementById("ng-avatar-grid");
+      const colorPalette = document.getElementById("ng-color-palette");
+
+      function updatePreview() {
+        const bg = hexToSoftBg(selectedColor);
+        previewBox.style.backgroundColor = bg;
+        previewBox.style.border = `2px solid ${selectedColor}`;
+        previewAvatar.innerHTML = getGuardianSVG({ avatarType: selectedAvatar, color: selectedColor });
+        previewName.textContent = nameInput.value.trim() || "新關主";
+        previewHex.textContent = selectedColor;
+        previewHex.style.color = selectedColor;
+      }
+
+      function renderAvatarPicker() {
+        avatarGrid.innerHTML = "";
+        GUARDIAN_AVATAR_OPTIONS[selectedCategory].forEach((opt) => {
+          const item = document.createElement("div");
+          item.className = `avatar-pick-item ${opt.type === selectedAvatar ? "selected" : ""}`;
+          item.innerHTML = `
+            <div class="avatar-pick-svg">${getGuardianSVG({ avatarType: opt.type, color: selectedColor })}</div>
+            <div class="avatar-pick-label">${opt.label}</div>`;
+          item.onclick = () => {
+            selectedAvatar = opt.type;
+            renderAvatarPicker();
+            updatePreview();
+          };
+          avatarGrid.appendChild(item);
+        });
+      }
+
+      function renderColorPalette() {
+        colorPalette.innerHTML = "";
+        webSafeColors.forEach((hex) => {
+          const swatch = document.createElement("div");
+          swatch.className = `color-swatch ${hex === selectedColor ? "selected" : ""}`;
+          swatch.style.backgroundColor = hex;
+          swatch.title = hex;
+          swatch.onclick = () => {
+            selectedColor = hex;
+            renderColorPalette();
+            renderAvatarPicker();
+            updatePreview();
+          };
+          colorPalette.appendChild(swatch);
+        });
+      }
+
+      document.querySelectorAll(".avatar-cat-btn").forEach((btn) => {
+        btn.onclick = () => {
+          selectedCategory = btn.dataset.cat;
+          document.querySelectorAll(".avatar-cat-btn").forEach((b) => b.classList.toggle("active", b === btn));
+          renderAvatarPicker();
+        };
+      });
+
+      nameInput.oninput = updatePreview;
+
+      updatePreview();
+      renderAvatarPicker();
+      renderColorPalette();
+
       document.getElementById("m-cancel").onclick = closeModal;
       document.getElementById("m-save").onclick = () => {
-        const name = document.getElementById("new-guardian-name").value.trim();
+        const name = nameInput.value.trim();
         if (!name) return showToast("請輸入關主稱呼");
-        const customCount = Object.keys(state.dbData.guardians || {}).length;
-        const palette = EXTRA_COLORS[customCount % EXTRA_COLORS.length];
         const id = uid("g");
         set(ref(db, `${ROOT_PATH}/guardians/${id}`), {
-          id, name, color: palette.color, bg: palette.bg, avatarType: "custom"
+          id,
+          name,
+          color: selectedColor,
+          bg: hexToSoftBg(selectedColor),
+          avatarType: selectedAvatar
         });
         state.currentGuardianId = id;
         closeModal();
@@ -2117,6 +3100,7 @@
 
     function renderCustomStampsModalContent() {
       const stampsList = Object.values(state.dbData.customStamps || {})
+        .filter((item) => item && !item.hidden)
         .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
       const gSettings = getGuardianStampSettings(state.currentGuardianId);
       const selectedId = gSettings.selectedCustomStampId;
@@ -2177,7 +3161,7 @@
           const updates = {};
           updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`] = "custom";
           updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/selectedCustomStampId`] = item.id;
-          updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = item.image;
+          updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = null;
           update(ref(db), updates);
           showToast("已切換自訂圖章！");
         };
@@ -2228,21 +3212,32 @@
       document.getElementById("m-confirm-delete").onclick = () => {
         const updates = {};
         const deleteSet = new Set(ids);
+
+        // 檢查所有印章（包含已兌換隱藏中的印章）是否有使用到該自訂圖章 ID
+        const allStamps = Object.values(state.dbData.stamps || {});
+        const usedCustomStampIds = new Set();
+        allStamps.forEach((s) => {
+          if (s && s.customStampId) usedCustomStampIds.add(s.customStampId);
+        });
+
         ids.forEach((id) => {
-          updates[`${ROOT_PATH}/customStamps/${id}`] = null;
+          if (usedCustomStampIds.has(id)) {
+            updates[`${ROOT_PATH}/customStamps/${id}/hidden`] = true;
+          } else {
+            updates[`${ROOT_PATH}/customStamps/${id}`] = null;
+          }
         });
 
         const remaining = Object.values(state.dbData.customStamps || {})
-          .filter((item) => !deleteSet.has(item.id))
+          .filter((item) => item && !item.hidden && !deleteSet.has(item.id))
           .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
         const nextId = remaining.length > 0 ? remaining[0].id : "";
-        const nextImg = remaining.length > 0 ? remaining[0].image : "";
 
         const allModes = (state.dbData.settings && state.dbData.settings.guardianModes) || {};
         Object.entries(allModes).forEach(([gid, gSet]) => {
           if (gSet && deleteSet.has(gSet.selectedCustomStampId)) {
             updates[`${ROOT_PATH}/settings/guardianModes/${gid}/selectedCustomStampId`] = nextId;
-            updates[`${ROOT_PATH}/settings/guardianModes/${gid}/customStampImage`] = nextImg;
+            updates[`${ROOT_PATH}/settings/guardianModes/${gid}/customStampImage`] = null;
           }
         });
 
@@ -2397,7 +3392,7 @@
             outCanvas.height = OUT_SIZE;
             const outCtx = outCanvas.getContext("2d");
 
-            // 剪裁成真正的圓形透明圖案
+            // 剪裁成真正的圓形透明圖案（輸出為 WebP）
             outCtx.beginPath();
             outCtx.arc(OUT_SIZE / 2, OUT_SIZE / 2, OUT_SIZE / 2, 0, Math.PI * 2);
             outCtx.closePath();
@@ -2410,7 +3405,7 @@
             const dy = OUT_SIZE / 2 + offsetY * ratio - drawH / 2;
             outCtx.drawImage(img, dx, dy, drawW, drawH);
 
-            const circleBase64 = outCanvas.toDataURL("image/png");
+            const circleBase64 = outCanvas.toDataURL("image/webp", 0.8);
             const id = uid("cs");
             const updates = {};
             updates[`${ROOT_PATH}/customStamps/${id}`] = {
@@ -2420,7 +3415,7 @@
             };
             updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`] = "custom";
             updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/selectedCustomStampId`] = id;
-            updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = circleBase64;
+            updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = null;
             update(ref(db), updates);
 
             showToast("自訂圓形圖章新增成功！");
@@ -2599,6 +3594,8 @@
         if (!itemName) return showToast("請輸入兌換項目名稱");
         const stampIds = [...state.selectedStampIds];
         const redId = uid("red");
+        const today = getTodayStr();
+        const expireDate = addDays(today, 7);
         const updates = {};
         updates[`${ROOT_PATH}/redemptions/${redId}`] = {
           id: redId,
@@ -2606,12 +3603,14 @@
           itemName,
           count: stampIds.length,
           stampIds,
-          date: getTodayStr(),
+          date: today,
           timestamp: Date.now(),
           guardianId: state.currentGuardianId
         };
         stampIds.forEach((sid) => {
           updates[`${ROOT_PATH}/stamps/${sid}/redeemedId`] = redId;
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemedDate`] = today;
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemExpireDate`] = expireDate;
         });
         update(ref(db), updates);
         state.selectedStampIds.clear();
@@ -2737,9 +3736,11 @@
         stamps: val.stamps || {},
         redemptions: val.redemptions || {},
         customStamps: val.customStamps || {},
-        settings: val.settings || { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {} }
+        customFrames: val.customFrames || {},
+        settings: val.settings || { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 }
       };
       document.getElementById("sync-status").textContent = "雲端已即時同步";
+      cleanupExpiredRedeemedStamps();
       renderAll();
     }, (err) => {
       document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
