@@ -62,6 +62,8 @@
     .btn-primary { background: var(--theme-color); color: #fff; }
     .btn-secondary { background: #e5e7eb; color: #374151; }
     .btn-danger { background: #ef4444; color: #fff; }
+    .btn-punish { background: #fff; color: #ef4444; border: 1.5px solid #ef4444; }
+    .btn-restore { background: #16a34a; color: #fff; }
     .btn-block { width: 100%; }
 
     /* 頁面 1：選擇關主 */
@@ -386,7 +388,7 @@
       background: rgba(255, 255, 255, 0.95);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 16px;
+      margin-bottom: 12px;
       box-shadow: var(--shadow);
     }
     .bank-stats-top {
@@ -404,10 +406,11 @@
     .stat-label { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
     .bank-stats-sub {
       display: flex;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 8px 14px;
       border-top: 1px solid #f3f4f6;
       padding-top: 10px;
-      font-size: 14px;
+      font-size: 13px;
       color: #4b5563;
     }
     .love-btn {
@@ -419,6 +422,36 @@
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
+    }
+
+    /* 集點銀行子頁籤 */
+    .bank-subtabs {
+      display: flex;
+      background: rgba(255, 255, 255, 0.88);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 6px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+    }
+    .bank-subtab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 9px 8px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-sub);
+      border-radius: 9px;
+      cursor: pointer;
+    }
+    .bank-subtab-btn.active {
+      background: var(--theme-color);
+      color: #fff;
+    }
+    .bank-subtab-btn[data-bank-tab="punished"].active {
+      background: #ef4444;
+      color: #fff;
     }
 
     .stamp-bank-grid {
@@ -444,6 +477,8 @@
       border-radius: 50%;
       padding: 2px;
       transition: transform 0.12s;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
     .bank-stamp-cell:active { transform: scale(0.92); }
     .bank-stamp-cell.selected::after {
@@ -459,6 +494,47 @@
       align-items: center;
       justify-content: center;
       border: 2px solid #16a34a;
+    }
+
+    /* 處罰哭臉覆蓋層 */
+    .punish-overlay {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .punish-overlay.today {
+      background: rgba(34, 197, 94, 0.52);
+    }
+    .punish-overlay.expired {
+      background: rgba(239, 68, 68, 0.58);
+    }
+    .bank-stamp-cell.punish-edit-selected {
+      outline: 3px solid #16a34a;
+      outline-offset: 2px;
+    }
+    .bank-stamp-cell.punish-edit-selected .punish-check-badge {
+      background: #16a34a;
+    }
+    .punish-check-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #16a34a;
+      background: #fff;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 6;
     }
 
     /* 底部固定操作列（兌換列與編輯刪除列共用） */
@@ -478,8 +554,8 @@
       z-index: 50;
       box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
     }
-    .redeem-bar-count { font-size: 16px; font-weight: 700; }
-    .redeem-bar-actions { display: flex; gap: 10px; }
+    .redeem-bar-count { font-size: 15px; font-weight: 700; }
+    .redeem-bar-actions { display: flex; gap: 8px; }
 
     /* 兌換紀錄 */
     .redemption-item {
@@ -614,7 +690,103 @@
       margin-top: 12px;
       padding-top: 12px;
       border-top: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
     }
+
+    /* 自訂圖章視窗與剪裁器 */
+    .custom-stamp-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 12px 0 16px;
+      min-height: 90px;
+    }
+    .custom-stamp-item {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      position: relative;
+      cursor: pointer;
+      border: 3px solid transparent;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f4f6;
+      user-select: none;
+      -webkit-touch-callout: none;
+      transition: transform 0.12s, border-color 0.2s;
+    }
+    .custom-stamp-item:active { transform: scale(0.94); }
+    .custom-stamp-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .custom-stamp-item.active-stamp {
+      border-color: var(--theme-color);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+    .custom-stamp-item.active-stamp::after {
+      content: "✓";
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--theme-color);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+    }
+    .custom-stamp-add {
+      border: 2.5px dashed #9ca3af;
+      background: #f9fafb;
+      color: #4b5563;
+      flex-direction: column;
+      font-size: 26px;
+      font-weight: 800;
+    }
+    .crop-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .crop-canvas {
+      width: 240px;
+      height: 240px;
+      border-radius: 16px;
+      background: #111827;
+      touch-action: none;
+      cursor: grab;
+      box-shadow: var(--shadow);
+    }
+    .crop-canvas:active { cursor: grabbing; }
+    .crop-zoom-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+    }
+    .crop-zoom-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--theme-color);
+    }
+
     .modal-actions {
       display: flex;
       gap: 10px;
@@ -714,8 +886,13 @@
           </div>
           <div class="bank-stats-sub">
             <span>已兌換：<strong id="stat-redeemed">0</strong></span>
-            <span>累計總數：<strong id="stat-total">0</strong></span>
+            <span>累積總數(已扣除處罰)：<strong id="stat-total">0</strong></span>
+            <span>處罰：<strong id="stat-punished" style="color:#ef4444;">0</strong></span>
           </div>
+        </div>
+        <div class="bank-subtabs">
+          <button class="bank-subtab-btn active" data-bank-tab="my">我的圖章</button>
+          <button class="bank-subtab-btn" data-bank-tab="punished">處罰</button>
         </div>
         <div class="stamp-bank-grid" id="stamp-bank-grid"></div>
       </div>
@@ -731,17 +908,20 @@
   <div id="redeem-bar" class="redeem-bar hidden">
     <div class="redeem-bar-count">已選取 <span id="selected-stamp-count">0</span> 個圖章</div>
     <div class="redeem-bar-actions">
-      <button class="btn btn-secondary" style="padding:8px 14px; font-size:14px;" id="btn-cancel-select">取消</button>
-      <button class="btn btn-primary" style="padding:8px 16px; font-size:14px;" id="btn-open-redeem-modal">兌換</button>
+      <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-select">取消</button>
+      <button class="btn btn-punish" style="padding:8px 12px; font-size:14px;" id="btn-punish-stamps">處罰</button>
+      <button class="btn btn-primary" style="padding:8px 14px; font-size:14px;" id="btn-open-redeem-modal">兌換</button>
     </div>
   </div>
 
-  <!-- 編輯模式底部固定刪除列 -->
+  <!-- 編輯模式底部固定操作列 -->
   <div id="edit-bar" class="redeem-bar hidden">
-    <div class="redeem-bar-count">編輯模式：已選 <span id="edit-selected-count">0</span> 項</div>
+    <div class="redeem-bar-count">已選 <span id="edit-selected-count">0</span> 項</div>
     <div class="redeem-bar-actions">
-      <button class="btn btn-secondary" style="padding:8px 14px; font-size:14px;" id="btn-cancel-edit">取消</button>
-      <button class="btn btn-danger" style="padding:8px 16px; font-size:14px;" id="btn-delete-selected">刪除</button>
+      <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-edit">取消</button>
+      <button class="btn btn-primary hidden" style="padding:8px 12px; font-size:14px;" id="btn-toggle-task-type">切換類型</button>
+      <button class="btn btn-restore hidden" style="padding:8px 14px; font-size:14px;" id="btn-restore-punished">恢復</button>
+      <button class="btn btn-danger" style="padding:8px 12px; font-size:14px;" id="btn-delete-selected">刪除</button>
     </div>
   </div>
 
@@ -799,16 +979,20 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, settings: { stampMode: "avatar", customStampImage: "" } },
+      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {} } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentTab: "tasks",
+      bankSubTab: "my", // "my" | "punished"
       viewDate: getTodayStr(),
       selectedStampIds: new Set(),
       lastTap: { key: null, time: 0 },
-      editMode: null, // "guardian" | "kid" | "task" | null
+      editMode: null, // "guardian" | "kid" | "task" | "punished" | null
       editSelectedIds: new Set(),
-      ignoreNextClick: false
+      ignoreNextClick: false,
+      customStampModalOpen: false,
+      customStampEditMode: false,
+      customStampEditSelectedIds: new Set()
     };
 
     // === 工具函式 ===
@@ -853,6 +1037,24 @@
 
     function uid(prefix = "id") {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+
+    // === 取得各關主獨立的蓋章模式設定（未設定過預設關主圖示）===
+    function getGuardianStampSettings(guardianId = state.currentGuardianId) {
+      const allModes = (state.dbData.settings && state.dbData.settings.guardianModes) || {};
+      const gSet = allModes[guardianId];
+      if (gSet) {
+        return {
+          stampMode: gSet.stampMode || "avatar",
+          selectedCustomStampId: gSet.selectedCustomStampId || "",
+          customStampImage: gSet.customStampImage || ""
+        };
+      }
+      return {
+        stampMode: "avatar",
+        selectedCustomStampId: "",
+        customStampImage: ""
+      };
     }
 
     // === 長按偵測與編輯模式管理 ===
@@ -918,8 +1120,141 @@
       const bar = document.getElementById("edit-bar");
       const count = state.editSelectedIds.size;
       document.getElementById("edit-selected-count").textContent = count;
-      document.getElementById("btn-delete-selected").disabled = count === 0;
+
+      const isTaskEdit = state.editMode === "task";
+      const isPunishedEdit = state.editMode === "punished";
+
+      const deleteBtn = document.getElementById("btn-delete-selected");
+      deleteBtn.classList.toggle("hidden", isPunishedEdit);
+      deleteBtn.disabled = count === 0;
+
+      const restoreBtn = document.getElementById("btn-restore-punished");
+      restoreBtn.classList.toggle("hidden", !isPunishedEdit);
+      restoreBtn.disabled = count === 0;
+
+      const toggleBtn = document.getElementById("btn-toggle-task-type");
+      toggleBtn.classList.toggle("hidden", !isTaskEdit);
+      toggleBtn.disabled = count === 0;
+
+      if (isTaskEdit && count > 0) {
+        const tasks = state.dbData.tasks || {};
+        const selected = [...state.editSelectedIds].map((id) => tasks[id]).filter(Boolean);
+        const allSingle = selected.length > 0 && selected.every((t) => t.isSingle);
+        const allRoutine = selected.length > 0 && selected.every((t) => !t.isSingle);
+        toggleBtn.textContent = allSingle ? "改例行任務" : allRoutine ? "改單次任務" : "切換類型";
+      } else {
+        toggleBtn.textContent = "切換類型";
+      }
+
       bar.classList.toggle("hidden", !state.editMode);
+    }
+
+    function openToggleTaskTypeModal() {
+      const ids = [...state.editSelectedIds];
+      if (ids.length === 0) return;
+      const tasks = state.dbData.tasks || {};
+      const selected = ids.map((id) => tasks[id]).filter(Boolean);
+      if (selected.length === 0) return;
+
+      const allSingle = selected.every((t) => t.isSingle);
+      const allRoutine = selected.every((t) => !t.isSingle);
+      const defaultToSingle = allRoutine;
+      const today = getTodayStr();
+      const daysOrder = [1, 2, 3, 4, 5, 6, 0];
+      const existingWeekdays = selected.length === 1 && Array.isArray(selected[0].weekdays) && selected[0].weekdays.length > 0
+        ? selected[0].weekdays
+        : [0, 1, 2, 3, 4, 5, 6];
+
+      openModal(`
+        <h3 class="modal-title">${allSingle ? "切換為例行任務" : allRoutine ? "切換為單次任務" : "切換任務類型"}</h3>
+        <p style="text-align:center; font-size:14px; color:#4b5563; margin:0 0 14px;">
+          已選取：<strong>${selected.map((t) => t.name).join("、")}</strong>
+        </p>
+        ${!allSingle && !allRoutine ? `
+          <div class="form-group">
+            <label class="form-label">要切換為哪種任務？</label>
+            <select id="toggle-target-type" class="form-input">
+              <option value="routine">例行任務（從今天 ${today} 開始）</option>
+              <option value="single">單次任務（僅今天 ${today} 有效，保留過去紀錄）</option>
+            </select>
+          </div>` : `
+          <p style="text-align:center; font-size:13px; color:#6b7280; margin:0 0 14px;">
+            ${defaultToSingle
+              ? `將從今天（${today}）起改為單次任務，不影響過去天數的任務紀錄。`
+              : `將從今天（${today}）起改為例行任務，不會出現在過去天數。`}
+          </p>`}
+        <div class="form-group ${defaultToSingle ? "hidden" : ""}" id="toggle-weekday-group">
+          <label class="form-label">開放星期</label>
+          <div class="checkbox-grid">
+            ${daysOrder.map((d) => `
+              <label class="chip-check">
+                <input type="checkbox" class="toggle-wd-check" value="${d}" ${existingWeekdays.includes(d) ? "checked" : ""} /> ${WEEKDAYS[d].replace("星期", "週")}
+              </label>`).join("")}
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm-toggle">確認切換</button>
+        </div>`);
+
+      const targetSelect = document.getElementById("toggle-target-type");
+      if (targetSelect) {
+        targetSelect.onchange = () => {
+          document.getElementById("toggle-weekday-group").classList.toggle("hidden", targetSelect.value === "single");
+        };
+      }
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-toggle").onclick = () => {
+        const toSingle = targetSelect ? targetSelect.value === "single" : defaultToSingle;
+        const weekdays = [...document.querySelectorAll(".toggle-wd-check:checked")].map((el) => Number(el.value));
+        if (!toSingle && weekdays.length === 0) return showToast("請至少勾選一天");
+
+        const yesterday = addDays(today, -1);
+        const updates = {};
+
+        selected.forEach((t) => {
+          const history = Array.isArray(t.history) ? [...t.history] : [];
+
+          if (toSingle) {
+            if (!t.isSingle && (!t.startDate || t.startDate <= yesterday)) {
+              history.push({
+                isSingle: false,
+                startDate: t.startDate || null,
+                endDate: yesterday,
+                weekdays: Array.isArray(t.weekdays) ? t.weekdays : []
+              });
+            }
+            updates[`${ROOT_PATH}/tasks/${t.id}`] = {
+              ...t,
+              isSingle: true,
+              singleDate: today,
+              startDate: today,
+              history
+            };
+          } else {
+            if (t.isSingle && t.singleDate && t.singleDate < today) {
+              history.push({
+                isSingle: true,
+                singleDate: t.singleDate
+              });
+            }
+            updates[`${ROOT_PATH}/tasks/${t.id}`] = {
+              ...t,
+              isSingle: false,
+              singleDate: null,
+              startDate: today,
+              weekdays,
+              history
+            };
+          }
+        });
+
+        update(ref(db), updates);
+        closeModal();
+        exitEditMode();
+        showToast(toSingle ? "已切換為單次任務" : "已切換為例行任務");
+      };
     }
 
     function openConfirmDeleteModal() {
@@ -983,7 +1318,27 @@
       };
     }
 
-    // === Q版專屬 SVG 頭像、指紋與愛心產生器 ===
+    function restoreSelectedPunishedStamps() {
+      const today = getTodayStr();
+      const stampsMap = state.dbData.stamps || {};
+      const ids = [...state.editSelectedIds].filter((id) => stampsMap[id] && stampsMap[id].punishedDate === today);
+      if (ids.length === 0) {
+        showToast("只能恢復當日處罰的圖章");
+        exitEditMode();
+        return;
+      }
+
+      const updates = {};
+      ids.forEach((sid) => {
+        updates[`${ROOT_PATH}/stamps/${sid}/punishedDate`] = null;
+        updates[`${ROOT_PATH}/stamps/${sid}/punishedTimestamp`] = null;
+      });
+      update(ref(db), updates);
+      exitEditMode();
+      showToast(`已恢復 ${ids.length} 個圖章`);
+    }
+
+    // === Q版專屬 SVG 頭像、指紋、愛心與哭臉產生器 ===
     function getGuardianSVG(guardian) {
       const c = guardian.color || "#3b82f6";
       const type = guardian.avatarType || "custom";
@@ -1066,6 +1421,17 @@
       </svg>`;
     }
 
+    function getCryingFaceSVG() {
+      return `<svg viewBox="0 0 100 100" width="84%" height="84%">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="#ffffff" stroke-width="5" opacity="0.95"/>
+        <circle cx="35" cy="42" r="4.5" fill="#ffffff"/>
+        <circle cx="65" cy="42" r="4.5" fill="#ffffff"/>
+        <path d="M35 51 C31 58, 31 64, 35 64 C39 64, 39 58, 35 51 Z" fill="#e0f2fe"/>
+        <path d="M65 51 C61 58, 61 64, 65 64 C69 64, 69 58, 65 51 Z" fill="#e0f2fe"/>
+        <path d="M34 73 Q50 61 66 73" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+      </svg>`;
+    }
+
     function getDemoKidSVG(type) {
       if (type === "demo_sis1") {
         return `<svg viewBox="0 0 100 100" width="100%" height="100%">
@@ -1110,7 +1476,8 @@
         return getHeartSVG(g.color);
       }
       if (stamp.mode === "custom") {
-        const imgSrc = stamp.customImage || (state.dbData.settings && state.dbData.settings.customStampImage);
+        const gSet = getGuardianStampSettings(stamp.guardianId);
+        const imgSrc = stamp.customImage || gSet.customStampImage || (state.dbData.settings && state.dbData.settings.customStampImage);
         if (imgSrc) {
           return `<img src="${imgSrc}" alt="自訂圖章" style="width:100%;height:100%;object-fit:cover;border-radius:50%;border:3px solid ${g.color};" />`;
         }
@@ -1205,6 +1572,9 @@
         renderTaskWall();
         renderStampBank();
         renderRedemptionHistory();
+      }
+      if (state.customStampModalOpen) {
+        renderCustomStampsModalContent();
       }
     }
 
@@ -1307,11 +1677,30 @@
       document.getElementById("btn-next-day").disabled = isToday;
 
       const listEl = document.getElementById("task-wall-list");
-      const tasks = Object.values(state.dbData.tasks || {}).filter((t) => {
-        if (!t.kidIds || !t.kidIds.includes(state.currentKidId)) return false;
-        if (t.isSingle) return t.singleDate === state.viewDate;
-        return Array.isArray(t.weekdays) && t.weekdays.includes(dow);
-      });
+      const getTaskModeOnDate = (t, dateStr, dayOfWeek) => {
+        if (t.isSingle) {
+          if (t.singleDate === dateStr) return "single";
+        } else {
+          if ((!t.startDate || dateStr >= t.startDate) && Array.isArray(t.weekdays) && t.weekdays.includes(dayOfWeek)) {
+            return "routine";
+          }
+        }
+        if (Array.isArray(t.history)) {
+          for (const h of t.history) {
+            if (h.isSingle) {
+              if (h.singleDate === dateStr) return "single";
+            } else if ((!h.startDate || dateStr >= h.startDate) && (!h.endDate || dateStr <= h.endDate) && Array.isArray(h.weekdays) && h.weekdays.includes(dayOfWeek)) {
+              return "routine";
+            }
+          }
+        }
+        return null;
+      };
+
+      const tasks = Object.values(state.dbData.tasks || {})
+        .filter((t) => t.kidIds && t.kidIds.includes(state.currentKidId))
+        .map((t) => ({ task: t, modeOnDate: getTaskModeOnDate(t, state.viewDate, dow) }))
+        .filter((item) => item.modeOnDate !== null);
 
       const stamps = Object.values(state.dbData.stamps || {});
 
@@ -1321,7 +1710,7 @@
       }
 
       listEl.innerHTML = "";
-      tasks.forEach((task) => {
+      tasks.forEach(({ task, modeOnDate }) => {
         const stampCount = Math.max(1, Number(task.stampCount) || 1);
         const taskStamps = stamps.filter(
           (s) => s.kidId === state.currentKidId && s.taskId === task.id && s.date === state.viewDate
@@ -1334,7 +1723,7 @@
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <div class="task-info">
             <div class="task-title">${task.name}</div>
-            <div class="task-meta">${task.isSingle ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${!isEditing && taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
+            <div class="task-meta">${modeOnDate === "single" ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${!isEditing && taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
           </div>`;
 
         attachLongPress(row, () => enterEditMode("task", task.id));
@@ -1375,13 +1764,14 @@
       const tapKey = `${task.id}_${state.viewDate}_${slotIndex}`;
 
       if (!existingStamp) {
-        const mode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
-        const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
+        const gSettings = getGuardianStampSettings(state.currentGuardianId);
+        const mode = gSettings.stampMode;
+        const customImg = gSettings.customStampImage;
         if (mode === "custom" && !customImg) {
-          showToast("請先到設定上傳自訂圖章圖案");
+          showToast("請先到設定選擇或上傳自訂圖章");
           return;
         }
-        const stampId = uid("st");
+        const stampId = `${state.currentKidId}_${task.id}_${state.viewDate}_${slotIndex}`;
         const newStamp = {
           id: stampId,
           kidId: state.currentKidId,
@@ -1413,55 +1803,110 @@
     }
 
     function renderStampBank() {
+      const today = getTodayStr();
       const allKidStamps = Object.values(state.dbData.stamps || {})
         .filter((s) => s.kidId === state.currentKidId)
         .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
-      const available = allKidStamps.filter((s) => !s.redeemedId);
-      const redeemedCount = allKidStamps.length - available.length;
+      const punished = allKidStamps
+        .filter((s) => Boolean(s.punishedDate))
+        .sort((a, b) => (a.punishedTimestamp || a.timestamp || 0) - (b.punishedTimestamp || b.timestamp || 0));
+      const available = allKidStamps.filter((s) => !s.redeemedId && !s.punishedDate);
+      const redeemedCount = allKidStamps.filter((s) => Boolean(s.redeemedId) && !s.punishedDate).length;
+      const totalAfterPunish = available.length + redeemedCount;
 
       document.getElementById("stat-available").textContent = available.length;
       document.getElementById("stat-redeemed").textContent = redeemedCount;
-      document.getElementById("stat-total").textContent = allKidStamps.length;
+      document.getElementById("stat-total").textContent = totalAfterPunish;
+      document.getElementById("stat-punished").textContent = punished.length;
+
+      document.querySelectorAll(".bank-subtab-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.bankTab === state.bankSubTab);
+      });
 
       const grid = document.getElementById("stamp-bank-grid");
       grid.innerHTML = "";
 
-      if (available.length === 0) {
-        grid.innerHTML = `<div class="empty-hint">目前還沒有可兌換的圖章，快去任務牆收集吧！</div>`;
+      if (state.bankSubTab === "my") {
+        if (available.length === 0) {
+          grid.innerHTML = `<div class="empty-hint">目前還沒有可兌換的圖章，快去任務牆收集吧！</div>`;
+          state.selectedStampIds.clear();
+          updateRedeemBar();
+          return;
+        }
+
+        const validIds = new Set(available.map((s) => s.id));
+        for (const id of state.selectedStampIds) {
+          if (!validIds.has(id)) state.selectedStampIds.delete(id);
+        }
+
+        available.forEach((stamp) => {
+          const cell = document.createElement("div");
+          cell.className = `bank-stamp-cell ${state.selectedStampIds.has(stamp.id) ? "selected" : ""}`;
+          cell.innerHTML = renderStampGraphic(stamp);
+          cell.onclick = () => {
+            if (state.selectedStampIds.has(stamp.id)) {
+              state.selectedStampIds.delete(stamp.id);
+            } else {
+              state.selectedStampIds.add(stamp.id);
+            }
+            cell.classList.toggle("selected");
+            updateRedeemBar();
+          };
+          grid.appendChild(cell);
+        });
+        updateRedeemBar();
+      } else {
+        // 處罰子頁籤
         state.selectedStampIds.clear();
         updateRedeemBar();
-        return;
-      }
 
-      const validIds = new Set(available.map((s) => s.id));
-      for (const id of state.selectedStampIds) {
-        if (!validIds.has(id)) state.selectedStampIds.delete(id);
-      }
+        if (punished.length === 0) {
+          grid.innerHTML = `<div class="empty-hint">目前沒有被處罰的圖章喔！</div>`;
+          if (state.editMode === "punished") exitEditMode();
+          return;
+        }
 
-      available.forEach((stamp) => {
-        const cell = document.createElement("div");
-        cell.className = `bank-stamp-cell ${state.selectedStampIds.has(stamp.id) ? "selected" : ""}`;
-        cell.innerHTML = renderStampGraphic(stamp);
-        cell.onclick = () => {
-          if (state.selectedStampIds.has(stamp.id)) {
-            state.selectedStampIds.delete(stamp.id);
+        const isEditingPunished = state.editMode === "punished";
+        punished.forEach((stamp) => {
+          const isPunishedToday = stamp.punishedDate === today;
+          const isEditSel = isEditingPunished && isPunishedToday && state.editSelectedIds.has(stamp.id);
+
+          const cell = document.createElement("div");
+          cell.className = `bank-stamp-cell ${isEditSel ? "punish-edit-selected" : ""}`;
+          cell.innerHTML = `
+            ${renderStampGraphic(stamp)}
+            <div class="punish-overlay ${isPunishedToday ? "today" : "expired"}">
+              ${getCryingFaceSVG()}
+            </div>
+            ${isEditingPunished && isPunishedToday ? `<div class="punish-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}`;
+
+          if (isPunishedToday) {
+            attachLongPress(cell, () => enterEditMode("punished", stamp.id));
+            cell.onclick = () => {
+              if (state.ignoreNextClick) return;
+              if (isEditingPunished) {
+                toggleEditSelection(stamp.id);
+              }
+            };
           } else {
-            state.selectedStampIds.add(stamp.id);
+            cell.onclick = () => {
+              if (isEditingPunished) {
+                showToast("已超過當日，無法恢復");
+              }
+            };
           }
-          cell.classList.toggle("selected");
-          updateRedeemBar();
-        };
-        grid.appendChild(cell);
-      });
-      updateRedeemBar();
+
+          grid.appendChild(cell);
+        });
+      }
     }
 
     function updateRedeemBar() {
       const bar = document.getElementById("redeem-bar");
       const count = state.selectedStampIds.size;
       document.getElementById("selected-stamp-count").textContent = count;
-      bar.classList.toggle("hidden", count === 0 || state.currentTab !== "bank");
+      bar.classList.toggle("hidden", count === 0 || state.currentTab !== "bank" || state.bankSubTab !== "my");
     }
 
     function renderRedemptionHistory() {
@@ -1521,10 +1966,14 @@
 
     // === Modal 控制 ===
     function openModal(html) {
+      state.customStampModalOpen = false;
       document.getElementById("modal-content").innerHTML = html;
       document.getElementById("modal-overlay").classList.remove("hidden");
     }
     function closeModal() {
+      state.customStampModalOpen = false;
+      state.customStampEditMode = false;
+      state.customStampEditSelectedIds.clear();
       document.getElementById("modal-overlay").classList.add("hidden");
     }
     document.getElementById("modal-overlay").onclick = (e) => {
@@ -1606,8 +2055,9 @@
     // 齒輪設定 Modal
     function openSettingsModal() {
       exitEditMode();
-      const currentMode = (state.dbData.settings && state.dbData.settings.stampMode) || "avatar";
-      const customImg = (state.dbData.settings && state.dbData.settings.customStampImage) || "";
+      const gSettings = getGuardianStampSettings(state.currentGuardianId);
+      const currentMode = gSettings.stampMode;
+      const customImg = gSettings.customStampImage;
       openModal(`
         <h3 class="modal-title">設定選單</h3>
         <button class="menu-list-btn" id="set-switch-guardian"><span>切換關主</span><span>›</span></button>
@@ -1623,12 +2073,11 @@
               <option value="custom" ${currentMode === "custom" ? "selected" : ""}>上傳圖案</option>
             </select>
           </div>
-          <div id="custom-stamp-upload-area" class="custom-stamp-upload ${currentMode === "custom" ? "" : "hidden"}">
-            <label class="form-label" style="font-size:13px;">上傳自訂圖章樣式</label>
-            <input type="file" id="custom-stamp-file" accept="image/*" class="form-input" style="font-size:13px; padding:8px;" />
-            <div id="custom-stamp-preview" style="margin-top:10px; text-align:center;">
-              ${customImg ? `<img src="${customImg}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid var(--theme-color);" />` : '<span style="font-size:12px;color:#6b7280;">尚未上傳圖案</span>'}
+          <div id="custom-stamp-manage-row" class="custom-stamp-upload ${currentMode === "custom" ? "" : "hidden"}">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${customImg ? `<img src="${customImg}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--theme-color);" />` : '<span style="font-size:12px;color:#6b7280;">尚未選擇圖章</span>'}
             </div>
+            <button class="btn btn-primary" style="padding:8px 14px; font-size:14px;" id="btn-open-custom-stamps">開啟自訂圖章</button>
           </div>
         </div>
         <div class="modal-actions">
@@ -1641,25 +2090,346 @@
       document.getElementById("set-add-task").onclick = openAddTaskModal;
 
       const modeSelect = document.getElementById("set-stamp-mode-select");
-      const uploadArea = document.getElementById("custom-stamp-upload-area");
+      const manageRow = document.getElementById("custom-stamp-manage-row");
       const modeNames = { avatar: "關主圖示", fingerprint: "指紋模式", heart: "愛心模式", custom: "上傳圖案" };
 
       modeSelect.onchange = () => {
         const nextMode = modeSelect.value;
-        set(ref(db, `${ROOT_PATH}/settings/stampMode`), nextMode);
-        uploadArea.classList.toggle("hidden", nextMode !== "custom");
+        set(ref(db, `${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`), nextMode);
+        manageRow.classList.toggle("hidden", nextMode !== "custom");
         showToast(`已切換為：${modeNames[nextMode]}`);
+        if (nextMode === "custom") {
+          openCustomStampsModal();
+        }
       };
 
-      document.getElementById("custom-stamp-file").onchange = async (e) => {
+      document.getElementById("btn-open-custom-stamps").onclick = openCustomStampsModal;
+    }
+
+    // === 自訂圖章視窗 ===
+    function openCustomStampsModal() {
+      state.customStampEditMode = false;
+      state.customStampEditSelectedIds.clear();
+      state.customStampModalOpen = true;
+      document.getElementById("modal-overlay").classList.remove("hidden");
+      renderCustomStampsModalContent();
+    }
+
+    function renderCustomStampsModalContent() {
+      const stampsList = Object.values(state.dbData.customStamps || {})
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      const gSettings = getGuardianStampSettings(state.currentGuardianId);
+      const selectedId = gSettings.selectedCustomStampId;
+      const selectedImg = gSettings.customStampImage;
+      const isEditing = state.customStampEditMode;
+
+      const box = document.getElementById("modal-content");
+      box.innerHTML = `
+        <h3 class="modal-title">自訂圖章</h3>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:-8px 0 10px;">
+          ${isEditing ? `編輯模式：已選取 ${state.customStampEditSelectedIds.size} 個圖章` : "點選圖章即可使用，長按圖章可進入編輯刪除"}
+        </p>
+        <input type="file" id="cs-upload-input" accept="image/*" class="hidden" />
+        <div class="custom-stamp-grid" id="cs-grid"></div>
+        <div class="modal-actions">
+          ${isEditing
+            ? `<button class="btn btn-secondary" id="cs-cancel-edit">取消</button>
+               <button class="btn btn-danger" id="cs-delete-btn" ${state.customStampEditSelectedIds.size === 0 ? "disabled" : ""}>刪除</button>`
+            : `<button class="btn btn-secondary" id="cs-back-settings">返回設定</button>
+               <button class="btn btn-primary" id="cs-done">完成</button>`}
+        </div>`;
+
+      const grid = document.getElementById("cs-grid");
+      const fileInput = document.getElementById("cs-upload-input");
+
+      fileInput.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        const base64 = await compressImageFile(file);
-        set(ref(db, `${ROOT_PATH}/settings/customStampImage`), base64);
-        document.getElementById("custom-stamp-preview").innerHTML =
-          `<img src="${base64}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:3px solid var(--theme-color);" />`;
-        showToast("自訂圖章上傳成功！");
+        openStampCropModal(file);
       };
+
+      stampsList.forEach((item) => {
+        const isActive = !isEditing && (item.id === selectedId || (!selectedId && selectedImg && item.image === selectedImg));
+        const isEditSel = isEditing && state.customStampEditSelectedIds.has(item.id);
+        const cell = document.createElement("div");
+        cell.className = `custom-stamp-item ${isActive ? "active-stamp" : ""} ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
+        cell.innerHTML = `
+          ${isEditing ? `<div class="edit-check-badge" style="top:-4px;right:-4px;width:22px;height:22px;font-size:13px;">${isEditSel ? "✓" : ""}</div>` : ""}
+          <img src="${item.image}" alt="自訂圖章" />`;
+
+        attachLongPress(cell, () => {
+          state.customStampEditMode = true;
+          state.customStampEditSelectedIds = new Set([item.id]);
+          renderCustomStampsModalContent();
+        });
+
+        cell.onclick = () => {
+          if (state.ignoreNextClick) return;
+          if (isEditing) {
+            if (state.customStampEditSelectedIds.has(item.id)) {
+              state.customStampEditSelectedIds.delete(item.id);
+            } else {
+              state.customStampEditSelectedIds.add(item.id);
+            }
+            renderCustomStampsModalContent();
+            return;
+          }
+          const updates = {};
+          updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`] = "custom";
+          updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/selectedCustomStampId`] = item.id;
+          updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = item.image;
+          update(ref(db), updates);
+          showToast("已切換自訂圖章！");
+        };
+
+        grid.appendChild(cell);
+      });
+
+      if (!isEditing) {
+        const addBtn = document.createElement("div");
+        addBtn.className = "custom-stamp-item custom-stamp-add";
+        addBtn.title = "新增自訂圖章";
+        addBtn.innerHTML = `<span>＋</span><span style="font-size:11px; margin-top:-4px;">新增</span>`;
+        addBtn.onclick = () => fileInput.click();
+        grid.appendChild(addBtn);
+      }
+
+      if (isEditing) {
+        document.getElementById("cs-cancel-edit").onclick = () => {
+          state.customStampEditMode = false;
+          state.customStampEditSelectedIds.clear();
+          renderCustomStampsModalContent();
+        };
+        document.getElementById("cs-delete-btn").onclick = openConfirmDeleteCustomStampsModal;
+      } else {
+        document.getElementById("cs-back-settings").onclick = openSettingsModal;
+        document.getElementById("cs-done").onclick = closeModal;
+      }
+    }
+
+    function openConfirmDeleteCustomStampsModal() {
+      const ids = [...state.customStampEditSelectedIds];
+      if (ids.length === 0) return;
+
+      openModal(`
+        <h3 class="modal-title">確認刪除自訂圖章</h3>
+        <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
+          確定要刪除已選取的 <strong>${ids.length}</strong> 個自訂圖章嗎？
+        </p>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0;">
+          過去已經蓋過的圖章紀錄仍會完整保留。
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-danger" id="m-confirm-delete">確認刪除</button>
+        </div>`);
+
+      document.getElementById("m-cancel").onclick = openCustomStampsModal;
+      document.getElementById("m-confirm-delete").onclick = () => {
+        const updates = {};
+        const deleteSet = new Set(ids);
+        ids.forEach((id) => {
+          updates[`${ROOT_PATH}/customStamps/${id}`] = null;
+        });
+
+        const remaining = Object.values(state.dbData.customStamps || {})
+          .filter((item) => !deleteSet.has(item.id))
+          .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        const nextId = remaining.length > 0 ? remaining[0].id : "";
+        const nextImg = remaining.length > 0 ? remaining[0].image : "";
+
+        const allModes = (state.dbData.settings && state.dbData.settings.guardianModes) || {};
+        Object.entries(allModes).forEach(([gid, gSet]) => {
+          if (gSet && deleteSet.has(gSet.selectedCustomStampId)) {
+            updates[`${ROOT_PATH}/settings/guardianModes/${gid}/selectedCustomStampId`] = nextId;
+            updates[`${ROOT_PATH}/settings/guardianModes/${gid}/customStampImage`] = nextImg;
+          }
+        });
+
+        update(ref(db), updates);
+        showToast(`已刪除 ${ids.length} 個自訂圖章`);
+        openCustomStampsModal();
+      };
+    }
+
+    // === 圓形縮放剪裁視窗 ===
+    function openStampCropModal(file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const VIEW_SIZE = 240;
+          const CROP_RADIUS = 112;
+          const OUT_SIZE = 160;
+          const baseScale = Math.max((CROP_RADIUS * 2) / img.width, (CROP_RADIUS * 2) / img.height);
+
+          let zoom = 1;
+          let offsetX = 0;
+          let offsetY = 0;
+
+          openModal(`
+            <h3 class="modal-title">調整圓形圖章位置</h3>
+            <p style="text-align:center; font-size:13px; color:#6b7280; margin:-8px 0 12px;">
+              拖曳調整位置，滑桿或雙指縮放大小
+            </p>
+            <div class="crop-stage">
+              <canvas id="crop-canvas" class="crop-canvas" width="${VIEW_SIZE}" height="${VIEW_SIZE}"></canvas>
+              <div class="crop-zoom-row">
+                <span>縮放</span>
+                <input type="range" id="crop-zoom-slider" min="1" max="3.5" step="0.02" value="1" />
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" id="crop-cancel">取消</button>
+              <button class="btn btn-primary" id="crop-save">確認儲存</button>
+            </div>`);
+
+          const canvas = document.getElementById("crop-canvas");
+          const ctx = canvas.getContext("2d");
+          const zoomSlider = document.getElementById("crop-zoom-slider");
+
+          function clampOffsets() {
+            const drawW = img.width * baseScale * zoom;
+            const drawH = img.height * baseScale * zoom;
+            const maxX = Math.max(0, (drawW - CROP_RADIUS * 2) / 2);
+            const maxY = Math.max(0, (drawH - CROP_RADIUS * 2) / 2);
+            offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
+            offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
+          }
+
+          function drawPreview() {
+            clampOffsets();
+            const drawW = img.width * baseScale * zoom;
+            const drawH = img.height * baseScale * zoom;
+            const dx = VIEW_SIZE / 2 + offsetX - drawW / 2;
+            const dy = VIEW_SIZE / 2 + offsetY - drawH / 2;
+
+            ctx.clearRect(0, 0, VIEW_SIZE, VIEW_SIZE);
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+
+            // 圓形外部半透明遮罩
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
+            ctx.beginPath();
+            ctx.rect(0, 0, VIEW_SIZE, VIEW_SIZE);
+            ctx.arc(VIEW_SIZE / 2, VIEW_SIZE / 2, CROP_RADIUS, 0, Math.PI * 2, true);
+            ctx.fill("evenodd");
+
+            // 圓形外框
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(VIEW_SIZE / 2, VIEW_SIZE / 2, CROP_RADIUS, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          drawPreview();
+
+          zoomSlider.oninput = () => {
+            zoom = Number(zoomSlider.value);
+            drawPreview();
+          };
+
+          // 滑鼠拖曳
+          let isDragging = false;
+          let lastX = 0, lastY = 0;
+
+          canvas.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+          });
+          window.addEventListener("mousemove", (e) => {
+            if (!isDragging) return;
+            offsetX += e.clientX - lastX;
+            offsetY += e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            drawPreview();
+          });
+          window.addEventListener("mouseup", () => { isDragging = false; });
+
+          // 觸控拖曳與雙指縮放
+          let pinchStartDist = 0;
+          let pinchStartZoom = 1;
+
+          canvas.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+              isDragging = true;
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+              isDragging = false;
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              pinchStartDist = Math.hypot(dx, dy);
+              pinchStartZoom = zoom;
+            }
+          }, { passive: true });
+
+          canvas.addEventListener("touchmove", (e) => {
+            if (e.touches.length === 1 && isDragging) {
+              offsetX += e.touches[0].clientX - lastX;
+              offsetY += e.touches[0].clientY - lastY;
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+              drawPreview();
+            } else if (e.touches.length === 2 && pinchStartDist > 0) {
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              const dist = Math.hypot(dx, dy);
+              zoom = Math.max(1, Math.min(3.5, pinchStartZoom * (dist / pinchStartDist)));
+              zoomSlider.value = zoom.toFixed(2);
+              drawPreview();
+            }
+          }, { passive: true });
+
+          canvas.addEventListener("touchend", () => {
+            isDragging = false;
+            pinchStartDist = 0;
+          });
+
+          document.getElementById("crop-cancel").onclick = openCustomStampsModal;
+          document.getElementById("crop-save").onclick = () => {
+            const outCanvas = document.createElement("canvas");
+            outCanvas.width = OUT_SIZE;
+            outCanvas.height = OUT_SIZE;
+            const outCtx = outCanvas.getContext("2d");
+
+            // 剪裁成真正的圓形透明圖案
+            outCtx.beginPath();
+            outCtx.arc(OUT_SIZE / 2, OUT_SIZE / 2, OUT_SIZE / 2, 0, Math.PI * 2);
+            outCtx.closePath();
+            outCtx.clip();
+
+            const ratio = OUT_SIZE / (CROP_RADIUS * 2);
+            const drawW = img.width * baseScale * zoom * ratio;
+            const drawH = img.height * baseScale * zoom * ratio;
+            const dx = OUT_SIZE / 2 + offsetX * ratio - drawW / 2;
+            const dy = OUT_SIZE / 2 + offsetY * ratio - drawH / 2;
+            outCtx.drawImage(img, dx, dy, drawW, drawH);
+
+            const circleBase64 = outCanvas.toDataURL("image/png");
+            const id = uid("cs");
+            const updates = {};
+            updates[`${ROOT_PATH}/customStamps/${id}`] = {
+              id,
+              image: circleBase64,
+              timestamp: Date.now()
+            };
+            updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`] = "custom";
+            updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/selectedCustomStampId`] = id;
+            updates[`${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/customStampImage`] = circleBase64;
+            update(ref(db), updates);
+
+            showToast("自訂圓形圖章新增成功！");
+            openCustomStampsModal();
+          };
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
     }
 
     function openSwitchGuardianModal() {
@@ -1767,8 +2537,9 @@
         if (kidIds.length === 0) return showToast("請至少選擇一位寶貝");
 
         const id = uid("task");
+        const today = getTodayStr();
         set(ref(db, `${ROOT_PATH}/tasks/${id}`), {
-          id, name, stampCount, isSingle, singleDate: isSingle ? getTodayStr() : null, weekdays, kidIds
+          id, name, stampCount, isSingle, singleDate: isSingle ? today : null, startDate: today, weekdays, kidIds
         });
         closeModal();
         showToast("已新增任務！");
@@ -1849,6 +2620,39 @@
       };
     }
 
+    // 處罰確認 Modal
+    function openPunishModal() {
+      const count = state.selectedStampIds.size;
+      if (count === 0) return;
+      openModal(`
+        <h3 class="modal-title" style="color:#ef4444;">確認處罰</h3>
+        <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
+          確定要扣除選取的 <strong>${count}</strong> 個圖章作為處罰嗎？
+        </p>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0;">
+          圖章會移至「處罰」頁籤，當日內可長按恢復，隔日後無法恢復。
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-danger" id="m-confirm-punish">確認處罰</button>
+        </div>`);
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-punish").onclick = () => {
+        const stampIds = [...state.selectedStampIds];
+        const today = getTodayStr();
+        const now = Date.now();
+        const updates = {};
+        stampIds.forEach((sid) => {
+          updates[`${ROOT_PATH}/stamps/${sid}/punishedDate`] = today;
+          updates[`${ROOT_PATH}/stamps/${sid}/punishedTimestamp`] = now;
+        });
+        update(ref(db), updates);
+        state.selectedStampIds.clear();
+        closeModal();
+        showToast(`已處罰扣除 ${stampIds.length} 個圖章`);
+      };
+    }
+
     // === 事件綁定 ===
     document.getElementById("btn-confirm-guardian").onclick = () => {
       if (Object.keys(getAllGuardians()).length === 0) return showToast("請先新增至少一位關主");
@@ -1865,9 +2669,23 @@
       state.selectedStampIds.clear();
       renderStampBank();
     };
+    document.getElementById("btn-punish-stamps").onclick = openPunishModal;
     document.getElementById("btn-open-redeem-modal").onclick = openRedeemModal;
     document.getElementById("btn-cancel-edit").onclick = exitEditMode;
+    document.getElementById("btn-toggle-task-type").onclick = openToggleTaskTypeModal;
+    document.getElementById("btn-restore-punished").onclick = restoreSelectedPunishedStamps;
     document.getElementById("btn-delete-selected").onclick = openConfirmDeleteModal;
+
+    // 集點銀行子頁籤切換
+    document.querySelectorAll(".bank-subtab-btn").forEach((btn) => {
+      btn.onclick = () => {
+        if (state.bankSubTab === btn.dataset.bankTab) return;
+        exitEditMode();
+        state.selectedStampIds.clear();
+        state.bankSubTab = btn.dataset.bankTab;
+        renderStampBank();
+      };
+    });
 
     // 頁籤切換
     document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -1918,7 +2736,8 @@
         tasks: val.tasks || {},
         stamps: val.stamps || {},
         redemptions: val.redemptions || {},
-        settings: val.settings || { stampMode: "avatar", customStampImage: "" }
+        customStamps: val.customStamps || {},
+        settings: val.settings || { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {} }
       };
       document.getElementById("sync-status").textContent = "雲端已即時同步";
       renderAll();
