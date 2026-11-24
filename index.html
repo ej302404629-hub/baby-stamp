@@ -366,9 +366,27 @@
       background: rgba(255, 255, 255, 0.92);
       padding: 10px 14px;
       border-radius: 14px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       box-shadow: var(--shadow);
       user-select: none;
+    }
+    .daily-stamp-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 10px 16px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      font-size: 14px;
+      font-weight: 700;
+      color: #374151;
+    }
+    .daily-stamp-count {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--theme-color);
     }
     .date-nav-btn {
       border: none;
@@ -1058,7 +1076,7 @@
     <section id="page-main" class="hidden" style="display:flex; flex-direction:column; flex:1;">
       <header class="main-header">
         <div class="header-left">
-          <div class="header-avatar" id="header-kid-avatar" title="長按更換頭貼"></div>
+          <div class="header-avatar" id="header-kid-avatar" title="點擊切換寶貝，長按更換頭貼"></div>
           <div class="header-kid-info">
             <div class="header-name-row">
               <span class="header-kid-name" id="header-kid-name">寶貝</span>
@@ -1099,6 +1117,10 @@
             <div class="date-sub" id="display-weekday">星期一</div>
           </div>
           <button class="date-nav-btn" id="btn-next-day">▶</button>
+        </div>
+        <div class="daily-stamp-summary" id="daily-stamp-summary">
+          <span>當日圖章總數</span>
+          <span><strong class="daily-stamp-count" id="daily-stamp-count">0</strong> 章</span>
         </div>
         <div id="task-wall-list"></div>
       </div>
@@ -2384,6 +2406,21 @@
         document.getElementById("kid-avatar-reupload-input").click();
       });
 
+      // 點擊左上角頭像直接依序切換下一位寶貝
+      avatarContainer.onclick = () => {
+        if (state.ignoreNextClick) return;
+        const kids = Object.values(getActiveKids());
+        if (kids.length <= 1) return;
+        const currentIndex = kids.findIndex((k) => k.id === state.currentKidId);
+        const nextKid = kids[(currentIndex + 1) % kids.length];
+        exitEditMode();
+        state.currentKidId = nextKid.id;
+        state.selectedStampIds.clear();
+        updateRedeemBar();
+        renderAll();
+        showToast(`已切換寶貝：${nextKid.name}`);
+      };
+
       document.getElementById("header-kid-name").textContent = kid.name;
       
       const lvlBadge = document.getElementById("header-lvl-badge");
@@ -2451,6 +2488,10 @@
         .filter((item) => item.modeOnDate !== null);
 
       const stamps = Object.values(state.dbData.stamps || {});
+      const dayStampCount = stamps.filter(
+        (s) => s.kidId === state.currentKidId && s.date === state.viewDate
+      ).length;
+      document.getElementById("daily-stamp-count").textContent = dayStampCount;
 
       if (tasks.length === 0) {
         listEl.innerHTML = `<div class="empty-hint">這一天還沒有安排任務喔！<br/>點右上角 ⚙️「添加任務」來新增吧</div>`;
