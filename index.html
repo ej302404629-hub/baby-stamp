@@ -1233,7 +1233,7 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, customFrames: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
+      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentTab: "tasks",
@@ -1241,12 +1241,13 @@
       viewDate: getTodayStr(),
       selectedStampIds: new Set(),
       lastTap: { key: null, time: 0 },
-      editMode: null, // "guardian" | "kid" | "task" | "punished" | "kid_avatar_reupload" | null
+      editMode: null, // "guardian" | "kid" | "task" | "punished" | null
       editSelectedIds: new Set(),
       ignoreNextClick: false,
       customStampModalOpen: false,
       customStampEditMode: false,
-      customStampEditSelectedIds: new Set()
+      customStampEditSelectedIds: new Set(),
+      activeModalCleanup: null
     };
 
     // === 工具函式 ===
@@ -1313,15 +1314,18 @@
       };
     }
 
-    // === 自動清理超過保留期（7天）的已兌換隱藏圖章，以及已無人使用的軟刪除自訂圖章 ===
+    // === 自動清理超過保留期（7天）的已兌換隱藏圖章，並封存統計與清理未使用的軟刪除自訂圖章 ===
     function cleanupExpiredRedeemedStamps() {
       const todayStr = getTodayStr();
       const todayMs = new Date(todayStr).getTime();
       const stampsMap = state.dbData.stamps || {};
       const redemptionsMap = state.dbData.redemptions || {};
       const customStampsMap = state.dbData.customStamps || {};
+      const archivedStats = state.dbData.archivedStats || {};
       const updates = {};
       const deletingStampIds = new Set();
+      const guardianDelta = {};
+      const dailyDelta = {};
 
       Object.values(stampsMap).forEach((s) => {
         if (!s || !s.redeemedId) return;
@@ -1338,7 +1342,27 @@
         if (isExpired) {
           updates[`${ROOT_PATH}/stamps/${s.id}`] = null;
           deletingStampIds.add(s.id);
+          if (s.kidId && s.guardianId) {
+            const gKey = `${s.kidId}__${s.guardianId}`;
+            guardianDelta[gKey] = (guardianDelta[gKey] || 0) + 1;
+          }
+          if (s.kidId && s.date) {
+            const dKey = `${s.kidId}__${s.date}`;
+            dailyDelta[dKey] = (dailyDelta[dKey] || 0) + 1;
+          }
         }
+      });
+
+      // 將被清理的過期兌換圖章統計封存，避免影響「誰最疼我」與歷史「當日圖章總數」
+      Object.entries(guardianDelta).forEach(([key, addCnt]) => {
+        const [kidId, gid] = key.split("__");
+        const prev = Number(archivedStats[kidId]?.guardians?.[gid]) || 0;
+        updates[`${ROOT_PATH}/archivedStats/${kidId}/guardians/${gid}`] = prev + addCnt;
+      });
+      Object.entries(dailyDelta).forEach(([key, addCnt]) => {
+        const [kidId, dateStr] = key.split("__");
+        const prev = Number(archivedStats[kidId]?.daily?.[dateStr]) || 0;
+        updates[`${ROOT_PATH}/archivedStats/${kidId}/daily/${dateStr}`] = prev + addCnt;
       });
 
       // 若有已隱藏（軟刪除）的自訂圖章，且清理後已沒有任何印章使用，則一併完整刪除
@@ -1609,6 +1633,7 @@
             } else {
               updates[`${ROOT_PATH}/kids/${id}`] = null;
             }
+            updates[`${ROOT_PATH}/archivedStats/${id}`] = null;
           });
 
           // 清除該寶貝的所有圖章（包含一般圖章、處罰圖章、已兌換圖章）
@@ -1645,7 +1670,7 @@
               usedCustomIds.add(s.customStampId);
             }
           });
-          Object.values(customStampsMap).forEach((cs) => {
+          Object.values(state.dbData.customStamps || {}).forEach((cs) => {
             if (cs && cs.hidden && !usedCustomIds.has(cs.id)) {
               updates[`${ROOT_PATH}/customStamps/${cs.id}`] = null;
             }
@@ -2114,7 +2139,7 @@
       }
       if (lvl === 17) {
         // Lv 17: 聖域羽翼
-        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10B981"/><stop offset="30%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="50" cy="50" r="41" fill="none" stroke="url(#g17)" stroke-width="11.5"/><path d="M50 2 L58 13 L50 9 L42 13 Z M3 L50 A 42 42 0 0 0 97 50" fill="none" stroke="#60A5FA" stroke-width="2.5"/><path d="M12 40 C6 28 6 15 15 25 C14 34 18 40 22 45 Z M88 40 C94 28 94 15 85 25 C86 34 82 40 78 45 Z" fill="#93C5FD"/><polygon points="45,95 50,90 55,95" fill="#3B82F6"/></svg>`;
+        return `<svg viewBox="0 0 100 100"><defs><linearGradient id="g17" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#10B981"/><stop offset="30%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#1E3A8A"/></linearGradient></defs><circle cx="50" cy="50" r="41" fill="none" stroke="url(#g17)" stroke-width="11.5"/><path d="M50 2 L58 13 L50 9 L42 13 Z M3 50 A 42 42 0 0 0 97 50" fill="none" stroke="#60A5FA" stroke-width="2.5"/><path d="M12 40 C6 28 6 15 15 25 C14 34 18 40 22 45 Z M88 40 C94 28 94 15 85 25 C86 34 82 40 78 45 Z" fill="#93C5FD"/><polygon points="45,95 50,90 55,95" fill="#3B82F6"/></svg>`;
       }
       if (lvl === 18) {
         // Lv 18: 秩序史詩
@@ -2209,9 +2234,23 @@
       });
     }
 
-    // === 外框圖片壓縮（保留透明背景，輸出 WebP）===
+    // === 外框圖片處理（GIF 直接保留動圖，其餘格式壓縮為透明 WebP）===
     function compressFrameImageFile(file) {
       return new Promise((resolve, reject) => {
+        const isGif = file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+        if (isGif) {
+          const MAX_GIF_BYTES = 2 * 1024 * 1024; // 限制 2MB，避免影響雲端同步速度
+          if (file.size > MAX_GIF_BYTES) {
+            reject(new Error("GIF 檔案請小於 2MB"));
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+          return;
+        }
+
         const reader = new FileReader();
         reader.onload = (e) => {
           const img = new Image();
@@ -2237,6 +2276,7 @@
         reader.readAsDataURL(file);
       });
     }
+
 
     // === 頁面切換 ===
     function showPage(pageName) {
@@ -2395,31 +2435,6 @@
           ${renderKidAvatarHTML(kid)}
         </div>
         <div class="avatar-frame">${getFrameSVG(lvl)}</div>`;
-        
-      // 為左上角頭像綁定「長按進入更換頭照模式」
-      attachLongPress(avatarContainer, () => {
-        if (kid.isDemo) {
-          showToast("測試用預設寶貝不支援更換照片");
-          return;
-        }
-        state.editMode = "kid_avatar_reupload";
-        document.getElementById("kid-avatar-reupload-input").click();
-      });
-
-      // 點擊左上角頭像直接依序切換下一位寶貝
-      avatarContainer.onclick = () => {
-        if (state.ignoreNextClick) return;
-        const kids = Object.values(getActiveKids());
-        if (kids.length <= 1) return;
-        const currentIndex = kids.findIndex((k) => k.id === state.currentKidId);
-        const nextKid = kids[(currentIndex + 1) % kids.length];
-        exitEditMode();
-        state.currentKidId = nextKid.id;
-        state.selectedStampIds.clear();
-        updateRedeemBar();
-        renderAll();
-        showToast(`已切換寶貝：${nextKid.name}`);
-      };
 
       document.getElementById("header-kid-name").textContent = kid.name;
       
@@ -2430,25 +2445,213 @@
       document.getElementById("header-guardian-tag").textContent = `關主：${guardian.name}`;
     }
 
-    // 處理更換大頭照照片（包含自動刪除與更換記錄）
-    document.getElementById("kid-avatar-reupload-input").onchange = async (e) => {
-      if (state.editMode !== "kid_avatar_reupload" || !state.currentKidId) return;
-      const file = e.target.files[0];
-      if (!file) {
-        exitEditMode();
+    // 確認是否更換頭貼 Modal
+    function openConfirmChangeAvatarModal() {
+      const kid = getActiveKids()[state.currentKidId];
+      if (!kid) return;
+      if (kid.isDemo) {
+        showToast("測試用預設寶貝不支援更換照片");
         return;
       }
-      try {
-        const base64Img = await compressImageFile(file);
-        // 更新大頭照：在 Firebase kids/[id]/avatar 直接覆寫，舊的照片紀錄在 RTDB 中自然被覆蓋即為刪除
-        await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), base64Img);
-        showToast("頭貼更換成功！");
-      } catch (err) {
-        showToast("頭貼更換失敗，請重試");
-      } finally {
-        exitEditMode();
-      }
+      openModal(`
+        <h3 class="modal-title">更換寶貝頭像</h3>
+        <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
+          是否要為「<strong>${kid.name}</strong>」上傳新的頭像照片？
+        </p>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0;">
+          上傳新照片後，舊的照片紀錄會自動覆蓋刪除。
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm">確認</button>
+        </div>`);
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm").onclick = () => {
+        closeModal();
+        const input = document.getElementById("kid-avatar-reupload-input");
+        input.value = "";
+        input.click();
+      };
+    }
+
+    // 選擇頭像照片後，開啟縮放與移動剪裁視窗
+    document.getElementById("kid-avatar-reupload-input").onchange = (e) => {
+      if (!state.currentKidId) return;
+      const file = e.target.files[0];
+      if (!file) return;
+      openAvatarCropModal(file);
     };
+
+    // === 頭像圓形縮放移動剪裁視窗 ===
+    function openAvatarCropModal(file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+          const VIEW_SIZE = 240;
+          const CROP_RADIUS = 112;
+          const OUT_SIZE = 160;
+          const baseScale = Math.max((CROP_RADIUS * 2) / img.width, (CROP_RADIUS * 2) / img.height);
+
+          let zoom = 1;
+          let offsetX = 0;
+          let offsetY = 0;
+
+          openModal(`
+            <h3 class="modal-title">調整寶貝頭像位置</h3>
+            <p style="text-align:center; font-size:13px; color:#6b7280; margin:-8px 0 12px;">
+              拖曳調整位置，滑桿或雙指縮放大小
+            </p>
+            <div class="crop-stage">
+              <canvas id="avatar-crop-canvas" class="crop-canvas" width="${VIEW_SIZE}" height="${VIEW_SIZE}"></canvas>
+              <div class="crop-zoom-row">
+                <span>縮放</span>
+                <input type="range" id="avatar-crop-zoom-slider" min="1" max="3.5" step="0.02" value="1" />
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button class="btn btn-secondary" id="avatar-crop-cancel">取消</button>
+              <button class="btn btn-primary" id="avatar-crop-save">確認上傳</button>
+            </div>`);
+
+          const canvas = document.getElementById("avatar-crop-canvas");
+          const ctx = canvas.getContext("2d");
+          const zoomSlider = document.getElementById("avatar-crop-zoom-slider");
+
+          function clampOffsets() {
+            const drawW = img.width * baseScale * zoom;
+            const drawH = img.height * baseScale * zoom;
+            const maxX = Math.max(0, (drawW - CROP_RADIUS * 2) / 2);
+            const maxY = Math.max(0, (drawH - CROP_RADIUS * 2) / 2);
+            offsetX = Math.max(-maxX, Math.min(maxX, offsetX));
+            offsetY = Math.max(-maxY, Math.min(maxY, offsetY));
+          }
+
+          function drawPreview() {
+            clampOffsets();
+            const drawW = img.width * baseScale * zoom;
+            const drawH = img.height * baseScale * zoom;
+            const dx = VIEW_SIZE / 2 + offsetX - drawW / 2;
+            const dy = VIEW_SIZE / 2 + offsetY - drawH / 2;
+
+            ctx.clearRect(0, 0, VIEW_SIZE, VIEW_SIZE);
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+
+            ctx.save();
+            ctx.fillStyle = "rgba(0, 0, 0, 0.58)";
+            ctx.beginPath();
+            ctx.rect(0, 0, VIEW_SIZE, VIEW_SIZE);
+            ctx.arc(VIEW_SIZE / 2, VIEW_SIZE / 2, CROP_RADIUS, 0, Math.PI * 2, true);
+            ctx.fill("evenodd");
+
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(VIEW_SIZE / 2, VIEW_SIZE / 2, CROP_RADIUS, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          drawPreview();
+
+          zoomSlider.oninput = () => {
+            zoom = Number(zoomSlider.value);
+            drawPreview();
+          };
+
+          let isDragging = false;
+          let lastX = 0, lastY = 0;
+
+          const onMouseMove = (e) => {
+            if (!isDragging) return;
+            offsetX += e.clientX - lastX;
+            offsetY += e.clientY - lastY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            drawPreview();
+          };
+          const onMouseUp = () => { isDragging = false; };
+
+          canvas.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+          });
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+          state.activeModalCleanup = () => {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          };
+
+          let pinchStartDist = 0;
+          let pinchStartZoom = 1;
+
+          canvas.addEventListener("touchstart", (e) => {
+            if (e.touches.length === 1) {
+              isDragging = true;
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+            } else if (e.touches.length === 2) {
+              isDragging = false;
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              pinchStartDist = Math.hypot(dx, dy);
+              pinchStartZoom = zoom;
+            }
+          }, { passive: true });
+
+          canvas.addEventListener("touchmove", (e) => {
+            if (e.touches.length === 1 && isDragging) {
+              offsetX += e.touches[0].clientX - lastX;
+              offsetY += e.touches[0].clientY - lastY;
+              lastX = e.touches[0].clientX;
+              lastY = e.touches[0].clientY;
+              drawPreview();
+            } else if (e.touches.length === 2 && pinchStartDist > 0) {
+              const dx = e.touches[0].clientX - e.touches[1].clientX;
+              const dy = e.touches[0].clientY - e.touches[1].clientY;
+              const dist = Math.hypot(dx, dy);
+              zoom = Math.max(1, Math.min(3.5, pinchStartZoom * (dist / pinchStartDist)));
+              zoomSlider.value = zoom.toFixed(2);
+              drawPreview();
+            }
+          }, { passive: true });
+
+          canvas.addEventListener("touchend", () => {
+            isDragging = false;
+            pinchStartDist = 0;
+          });
+
+          document.getElementById("avatar-crop-cancel").onclick = closeModal;
+          document.getElementById("avatar-crop-save").onclick = async () => {
+            try {
+              const outCanvas = document.createElement("canvas");
+              outCanvas.width = OUT_SIZE;
+              outCanvas.height = OUT_SIZE;
+              const outCtx = outCanvas.getContext("2d");
+
+              const ratio = OUT_SIZE / (CROP_RADIUS * 2);
+              const drawW = img.width * baseScale * zoom * ratio;
+              const drawH = img.height * baseScale * zoom * ratio;
+              const dx = OUT_SIZE / 2 + offsetX * ratio - drawW / 2;
+              const dy = OUT_SIZE / 2 + offsetY * ratio - drawH / 2;
+              outCtx.drawImage(img, dx, dy, drawW, drawH);
+
+              const base64Img = outCanvas.toDataURL("image/webp", 0.75);
+              await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), base64Img);
+              closeModal();
+              showToast("頭貼更換成功！");
+            } catch (err) {
+              showToast("頭貼更換失敗，請重試");
+            }
+          };
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
 
     function renderTaskWall() {
       const today = getTodayStr();
@@ -2488,9 +2691,10 @@
         .filter((item) => item.modeOnDate !== null);
 
       const stamps = Object.values(state.dbData.stamps || {});
+      const archivedDailyCount = Number(state.dbData.archivedStats?.[state.currentKidId]?.daily?.[state.viewDate]) || 0;
       const dayStampCount = stamps.filter(
         (s) => s.kidId === state.currentKidId && s.date === state.viewDate
-      ).length;
+      ).length + archivedDailyCount;
       document.getElementById("daily-stamp-count").textContent = dayStampCount;
 
       if (tasks.length === 0) {
@@ -2770,12 +2974,20 @@
     }
 
     // === Modal 控制 ===
+    function runModalCleanup() {
+      if (typeof state.activeModalCleanup === "function") {
+        state.activeModalCleanup();
+        state.activeModalCleanup = null;
+      }
+    }
     function openModal(html) {
+      runModalCleanup();
       state.customStampModalOpen = false;
       document.getElementById("modal-content").innerHTML = html;
       document.getElementById("modal-overlay").classList.remove("hidden");
     }
     function closeModal() {
+      runModalCleanup();
       state.customStampModalOpen = false;
       state.customStampEditMode = false;
       state.customStampEditSelectedIds.clear();
@@ -2830,9 +3042,9 @@
           累積總數 <strong>${total}</strong> 章 (目前為 <strong>LVL ${lvl}</strong>)
         </p>
         <p style="text-align:center; font-size:11px; color:#9ca3af; margin:0 0 14px;">
-          點擊任一外框可上傳圖片替換（支援去背 PNG / WebP）
+          點擊任一外框可上傳圖片替換（支援去背 PNG / WebP / GIF 動圖，GIF 限 2MB 內）
         </p>
-        <input type="file" id="m-custom-frame-input" accept="image/png,image/webp,image/*" class="hidden" />
+        <input type="file" id="m-custom-frame-input" accept="image/gif,image/png,image/webp,image/*" class="hidden" />
         <div class="frames-overview-grid">
           ${gridHTML}
         </div>
@@ -2882,7 +3094,7 @@
           showToast(`已更新 LVL ${uploadTargetLevel} 外框！`);
           openLevelFramesModal();
         } catch (err) {
-          showToast("外框上傳失敗，請重試");
+          showToast(err?.message || "外框上傳失敗，請重試");
         }
       };
 
@@ -3133,6 +3345,7 @@
 
     // === 自訂圖章視窗 ===
     function openCustomStampsModal() {
+      runModalCleanup();
       state.customStampEditMode = false;
       state.customStampEditSelectedIds.clear();
       state.customStampModalOpen = true;
@@ -3216,7 +3429,10 @@
         addBtn.className = "custom-stamp-item custom-stamp-add";
         addBtn.title = "新增自訂圖章";
         addBtn.innerHTML = `<span>＋</span><span style="font-size:11px; margin-top:-4px;">新增</span>`;
-        addBtn.onclick = () => fileInput.click();
+        addBtn.onclick = () => {
+          fileInput.value = "";
+          fileInput.click();
+        };
         grid.appendChild(addBtn);
       }
 
@@ -3372,20 +3588,27 @@
           let isDragging = false;
           let lastX = 0, lastY = 0;
 
-          canvas.addEventListener("mousedown", (e) => {
-            isDragging = true;
-            lastX = e.clientX;
-            lastY = e.clientY;
-          });
-          window.addEventListener("mousemove", (e) => {
+          const onMouseMove = (e) => {
             if (!isDragging) return;
             offsetX += e.clientX - lastX;
             offsetY += e.clientY - lastY;
             lastX = e.clientX;
             lastY = e.clientY;
             drawPreview();
+          };
+          const onMouseUp = () => { isDragging = false; };
+
+          canvas.addEventListener("mousedown", (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
           });
-          window.addEventListener("mouseup", () => { isDragging = false; });
+          window.addEventListener("mousemove", onMouseMove);
+          window.addEventListener("mouseup", onMouseUp);
+          state.activeModalCleanup = () => {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+          };
 
           // 觸控拖曳與雙指縮放
           let pinchStartDist = 0;
@@ -3589,6 +3812,11 @@
       const counts = {};
       Object.keys(guardians).forEach((gid) => (counts[gid] = 0));
 
+      const archivedGuardians = state.dbData.archivedStats?.[state.currentKidId]?.guardians || {};
+      Object.entries(archivedGuardians).forEach(([gid, cnt]) => {
+        counts[gid] = (counts[gid] || 0) + (Number(cnt) || 0);
+      });
+
       Object.values(state.dbData.stamps || {})
         .filter((s) => s.kidId === state.currentKidId)
         .forEach((s) => {
@@ -3695,6 +3923,25 @@
     }
 
     // === 事件綁定 ===
+    // 左上角寶貝頭像：只綁定一次（長按彈出更換頭貼確認視窗，點擊依序快速切換寶貝）
+    const headerKidAvatarEl = document.getElementById("header-kid-avatar");
+    attachLongPress(headerKidAvatarEl, () => {
+      openConfirmChangeAvatarModal();
+    });
+    headerKidAvatarEl.onclick = () => {
+      if (state.ignoreNextClick) return;
+      const kids = Object.values(getActiveKids());
+      if (kids.length <= 1) return;
+      const currentIndex = kids.findIndex((k) => k.id === state.currentKidId);
+      const nextKid = kids[(currentIndex + 1) % kids.length];
+      exitEditMode();
+      state.currentKidId = nextKid.id;
+      state.selectedStampIds.clear();
+      updateRedeemBar();
+      renderAll();
+      showToast(`已切換寶貝：${nextKid.name}`);
+    };
+
     document.getElementById("btn-confirm-guardian").onclick = () => {
       if (Object.keys(getAllGuardians()).length === 0) return showToast("請先新增至少一位關主");
       showPage("kid");
@@ -3779,6 +4026,7 @@
         redemptions: val.redemptions || {},
         customStamps: val.customStamps || {},
         customFrames: val.customFrames || {},
+        archivedStats: val.archivedStats || {},
         settings: val.settings || { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 }
       };
       document.getElementById("sync-status").textContent = "雲端已即時同步";
