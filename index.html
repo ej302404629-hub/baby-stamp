@@ -431,6 +431,30 @@
     .task-info { flex: 1; min-width: 140px; }
     .task-title { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
     .task-meta { font-size: 12px; color: var(--text-sub); }
+    .task-drag-handle {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 44px;
+      margin-left: -6px;
+      font-size: 20px;
+      color: #9ca3af;
+      cursor: grab;
+      touch-action: none;
+      flex-shrink: 0;
+    }
+    .task-drag-handle:active {
+      cursor: grabbing;
+      color: var(--theme-color);
+    }
+    .task-item.dragging {
+      opacity: 0.92;
+      transform: scale(1.02);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+      border-color: var(--theme-color) !important;
+      z-index: 30;
+    }
 
     .stamp-boxes-wrap {
       display: flex;
@@ -1169,7 +1193,7 @@
   <div id="edit-bar" class="redeem-bar hidden">
     <div class="redeem-bar-count">已選 <span id="edit-selected-count">0</span> 項</div>
     <div class="redeem-bar-actions">
-      <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-edit">取消</button>
+      <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-edit">返回</button>
       <button class="btn btn-primary hidden" style="padding:8px 12px; font-size:14px;" id="btn-toggle-task-type">切換類型</button>
       <button class="btn btn-restore hidden" style="padding:8px 14px; font-size:14px;" id="btn-restore-punished">恢復</button>
       <button class="btn btn-danger" style="padding:8px 12px; font-size:14px;" id="btn-delete-selected">刪除</button>
@@ -2700,7 +2724,13 @@
       const tasks = Object.values(state.dbData.tasks || {})
         .filter((t) => t.kidIds && t.kidIds.includes(state.currentKidId))
         .map((t) => ({ task: t, modeOnDate: getTaskModeOnDate(t, state.viewDate, dow) }))
-        .filter((item) => item.modeOnDate !== null);
+        .filter((item) => item.modeOnDate !== null)
+        .sort((a, b) => {
+          const oa = typeof a.task.order === "number" ? a.task.order : Number.MAX_SAFE_INTEGER;
+          const ob = typeof b.task.order === "number" ? b.task.order : Number.MAX_SAFE_INTEGER;
+          if (oa !== ob) return oa - ob;
+          return (a.task.id || "").localeCompare(b.task.id || "");
+        });
 
       const stamps = Object.values(state.dbData.stamps || {});
       const archivedDailyCount = Number(state.dbData.archivedStats?.[state.currentKidId]?.daily?.[state.viewDate]) || 0;
@@ -2724,8 +2754,10 @@
 
         const row = document.createElement("div");
         row.className = `task-item ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
+        row.dataset.taskId = task.id;
         row.innerHTML = `
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
+          ${isEditing ? `<div class="task-drag-handle" title="按住拖曳排序">☰</div>` : ""}
           <div class="task-info">
             <div class="task-title">${task.name}</div>
             <div class="task-meta">${modeOnDate === "single" ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${!isEditing && taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
@@ -2737,6 +2769,8 @@
             if (state.ignoreNextClick) return;
             toggleEditSelection(task.id);
           };
+          const handle = row.querySelector(".task-drag-handle");
+          if (handle) attachTaskDragSort(row, handle, listEl);
         }
 
         const boxesWrap = document.createElement("div");
@@ -2762,6 +2796,96 @@
         row.appendChild(boxesWrap);
         listEl.appendChild(row);
       });
+    }
+    function attachTaskDragSort(row, handle, listEl) {
+      let isDragging = false;
+      let pointerId = null;
+
+      const onPointerMove = (e) => {
+        if (!isDragging || e.pointerId !== pointerId) return;
+        e.preventDefault();
+
+        const siblings = [...listEl.querySelectorAll(".task-item:not(.dragging)")];
+        let inserted = false;
+        for (const sib of siblings) {
+          const rect = sib.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (e.clientY < midY) {
+            listEl.insertBefore(row, sib);
+            inserted = true;
+            break;
+          }
+        }
+        if (!inserted) {
+          listEl.appendChild(row);
+        }
+      };
+
+      const finishDrag = (e) => {
+        if (!isDragging || e.pointerId !== pointerId) return;
+        isDragging = false;
+        row.classList.remove("dragging");
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", finishDrag);
+        window.removeEventListener("pointercancel", finishDrag);
+
+        state.ignoreNextClick = true;
+        setTimeout(() => { state.ignoreNextClick = false; }, 250);
+
+        saveTaskOrderFromDOM(listEl);
+      };
+
+      handle.addEventListener("pointerdown", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        isDragging = true;
+        pointerId = e.pointerId;
+        row.classList.add("dragging");
+        if (navigator.vibrate) navigator.vibrate(20);
+
+        window.addEventListener("pointermove", onPointerMove, { passive: false });
+        window.addEventListener("pointerup", finishDrag);
+        window.addEventListener("pointercancel", finishDrag);
+      });
+
+      handle.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    function saveTaskOrderFromDOM(listEl) {
+      const visibleIds = [...listEl.querySelectorAll(".task-item")]
+        .map((el) => el.dataset.taskId)
+        .filter(Boolean);
+      if (visibleIds.length === 0) return;
+
+      const allTasks = Object.values(state.dbData.tasks || {}).sort((a, b) => {
+        const oa = typeof a.order === "number" ? a.order : Number.MAX_SAFE_INTEGER;
+        const ob = typeof b.order === "number" ? b.order : Number.MAX_SAFE_INTEGER;
+        if (oa !== ob) return oa - ob;
+        return (a.id || "").localeCompare(b.id || "");
+      });
+
+      const visibleSet = new Set(visibleIds);
+      const visibleSlots = [];
+      allTasks.forEach((t, idx) => {
+        if (visibleSet.has(t.id)) visibleSlots.push(idx);
+      });
+
+      const newOrderList = allTasks.map((t) => t.id);
+      visibleSlots.forEach((slotIdx, i) => {
+        if (visibleIds[i]) newOrderList[slotIdx] = visibleIds[i];
+      });
+
+      const updates = {};
+      newOrderList.forEach((taskId, idx) => {
+        if (state.dbData.tasks[taskId]?.order !== idx) {
+          updates[`${ROOT_PATH}/tasks/${taskId}/order`] = idx;
+        }
+      });
+
+      if (Object.keys(updates).length > 0) {
+        update(ref(db), updates);
+        showToast("已更新任務順序");
+      }
     }
 
     function handleStampClick(task, existingStamp, slotIndex = 0) {
@@ -3870,8 +3994,11 @@
 
         const id = uid("task");
         const today = getTodayStr();
+        const existingOrders = Object.values(state.dbData.tasks || {})
+          .map((t) => (typeof t.order === "number" ? t.order : -1));
+        const nextOrder = existingOrders.length > 0 ? Math.max(...existingOrders) + 1 : 0;
         set(ref(db, `${ROOT_PATH}/tasks/${id}`), {
-          id, name, stampCount, isSingle, singleDate: isSingle ? today : null, startDate: today, weekdays, kidIds
+          id, name, stampCount, isSingle, singleDate: isSingle ? today : null, startDate: today, weekdays, kidIds, order: nextOrder
         });
         closeModal();
         showToast("已新增任務！");
