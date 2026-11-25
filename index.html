@@ -1194,6 +1194,7 @@
     <div class="redeem-bar-count">已選 <span id="edit-selected-count">0</span> 項</div>
     <div class="redeem-bar-actions">
       <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-edit">返回</button>
+      <button class="btn hidden" style="padding:8px 10px; font-size:14px; background:#f59e0b; color:#fff;" id="btn-rename-task">改名稱</button>
       <button class="btn btn-primary hidden" style="padding:8px 12px; font-size:14px;" id="btn-toggle-task-type">切換類型</button>
       <button class="btn btn-restore hidden" style="padding:8px 14px; font-size:14px;" id="btn-restore-punished">恢復</button>
       <button class="btn btn-danger" style="padding:8px 12px; font-size:14px;" id="btn-delete-selected">刪除</button>
@@ -1482,6 +1483,9 @@
       const restoreBtn = document.getElementById("btn-restore-punished");
       restoreBtn.classList.toggle("hidden", !isPunishedEdit);
       restoreBtn.disabled = count === 0;
+      const renameBtn = document.getElementById("btn-rename-task");
+      renameBtn.classList.toggle("hidden", !isTaskEdit);
+      renameBtn.disabled = count !== 1;
 
       const toggleBtn = document.getElementById("btn-toggle-task-type");
       toggleBtn.classList.toggle("hidden", !isTaskEdit);
@@ -1498,6 +1502,50 @@
       }
 
       bar.classList.toggle("hidden", !state.editMode);
+    }
+    function openRenameTaskModal() {
+      const ids = [...state.editSelectedIds];
+      if (ids.length !== 1) return;
+      const task = (state.dbData.tasks || {})[ids[0]];
+      if (!task) return;
+
+      openModal(`
+        <h3 class="modal-title">修改任務名稱</h3>
+        <div class="form-group">
+          <label class="form-label">新任務名稱</label>
+          <input type="text" id="rename-task-input" class="form-input" placeholder="請輸入新的任務名稱" />
+        </div>
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0 0 8px;">
+          ${task.isSingle ? "此為單次任務，將更新此任務名稱。" : "此為例行任務，修改後所有日期的任務名稱將一併更新。"}
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm-rename">確認修改</button>
+        </div>`);
+
+      const input = document.getElementById("rename-task-input");
+      input.value = task.name || "";
+      input.focus();
+      input.select();
+
+      const submitRename = () => {
+        const newName = input.value.trim();
+        if (!newName) return showToast("請輸入任務名稱");
+        if (newName === task.name) {
+          closeModal();
+          return;
+        }
+        set(ref(db, `${ROOT_PATH}/tasks/${task.id}/name`), newName);
+        closeModal();
+        exitEditMode();
+        showToast("已修改任務名稱");
+      };
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-rename").onclick = submitRename;
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") submitRename();
+      };
     }
 
     function openToggleTaskTypeModal() {
@@ -4160,6 +4208,7 @@
     document.getElementById("btn-punish-stamps").onclick = openPunishModal;
     document.getElementById("btn-open-redeem-modal").onclick = openRedeemModal;
     document.getElementById("btn-cancel-edit").onclick = exitEditMode;
+    document.getElementById("btn-rename-task").onclick = openRenameTaskModal;
     document.getElementById("btn-toggle-task-type").onclick = openToggleTaskTypeModal;
     document.getElementById("btn-restore-punished").onclick = restoreSelectedPunishedStamps;
     document.getElementById("btn-delete-selected").onclick = openConfirmDeleteModal;
