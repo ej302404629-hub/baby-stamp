@@ -1247,7 +1247,8 @@
       customStampModalOpen: false,
       customStampEditMode: false,
       customStampEditSelectedIds: new Set(),
-      activeModalCleanup: null
+      activeModalCleanup: null,
+      coreLoaded: false
     };
 
     // === 工具函式 ===
@@ -2055,7 +2056,7 @@
 
     function renderKidAvatarHTML(kid) {
       if (kid.avatar && kid.avatar.startsWith("data:image")) {
-        return `<img src="${kid.avatar}" alt="${kid.name}" />`;
+        return `<img src="${kid.avatar}" alt="${kid.name}" style="width:100%;height:100%;object-fit:cover;" />`;
       }
       return getDemoKidSVG(kid.avatar || "demo_sis1");
     }
@@ -2457,11 +2458,11 @@
       openModal(`
         <h3 class="modal-title">更換寶貝頭像</h3>
         <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
-          <div style="position:relative; width:140px; height:140px; display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:158px; height:158px; display:flex; align-items:center; justify-content:center;">
             <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
               ${renderKidAvatarHTML(kid)}
             </div>
-            <div class="avatar-frame" style="width:140px; height:140px;">${getFrameSVG(lvl)}</div>
+            <div class="avatar-frame">${getFrameSVG(lvl)}</div>
           </div>
           <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${lvl}</span>
         </div>
@@ -3954,6 +3955,7 @@
     };
 
     document.getElementById("btn-confirm-guardian").onclick = () => {
+      if (!state.coreLoaded) return showToast("寶貝資料載入中，請稍候...");
       if (Object.keys(getAllGuardians()).length === 0) return showToast("請先新增至少一位關主");
       showPage("kid");
     };
@@ -4026,26 +4028,162 @@
     }, { passive: true });
 
     // === 監聽 Firebase 即時資料 ===
-    onValue(ref(db, ROOT_PATH), (snapshot) => {
-      const val = snapshot.val() || {};
-      state.dbData = {
-        guardians: val.guardians || {},
-        kids: val.kids || {},
-        deletedDemoKids: val.deletedDemoKids || {},
-        tasks: val.tasks || {},
-        stamps: val.stamps || {},
-        redemptions: val.redemptions || {},
-        customStamps: val.customStamps || {},
-        customFrames: val.customFrames || {},
-        archivedStats: val.archivedStats || {},
-        settings: val.settings || { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 }
-      };
-      document.getElementById("sync-status").textContent = "雲端已即時同步";
-      cleanupExpiredRedeemedStamps();
-      renderAll();
-    }, (err) => {
-      document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
+    const CORE_CACHE_KEY = `baby_stamp_core_${FAMILY_KEY}`;
+    const DEFAULT_SETTINGS = {
+      stampMode: "avatar",
+      customStampImage: "",
+      selectedCustomStampId: "",
+      guardianModes: {},
+      lvlThreshold: 50
+    };
+
+    // 輕量本機快取（關主、寶貝、設定）
+    function saveCoreCache() {
+      try {
+        localStorage.setItem(CORE_CACHE_KEY, JSON.stringify({
+          guardians: state.dbData.guardians,
+          kids: state.dbData.kids,
+          deletedDemoKids: state.dbData.deletedDemoKids,
+          settings: state.dbData.settings
+        }));
+      } catch (e) {}
+    }
+
+    // 大容量本機快取（外框 GIF、自訂圖章，使用 IndexedDB）
+    function openMediaDB() {
+      return new Promise((resolve) => {
+        try {
+          const req = indexedDB.open(`baby_stamp_media_${FAMILY_KEY}`, 1);
+          req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains("kv")) {
+              req.result.createObjectStore("kv");
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+    async function idbGet(key) {
+      const idb = await openMediaDB();
+      if (!idb) return null;
+      return new Promise((resolve) => {
+        try {
+          const req = idb.transaction("kv", "readonly").objectStore("kv").get(key);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }
+    async function idbSet(key, val) {
+      const idb = await openMediaDB();
+      if (!idb) return;
+      try {
+        idb.transaction("kv", "readwrite").objectStore("kv").put(val, key);
+      } catch (e) {}
+    }
+
+    // 合併多次監聽觸發，避免同一時間重複渲染畫面
+    let renderScheduled = false;
+    function scheduleRender() {
+      if (renderScheduled) return;
+      renderScheduled = true;
+      requestAnimationFrame(() => {
+        renderScheduled = false;
+        renderAll();
+      });
+    }
+
+    function updateConfirmBtnState() {
+      const btn = document.getElementById("btn-confirm-guardian");
+      if (!btn) return;
+      btn.disabled = !state.coreLoaded;
+      btn.textContent = state.coreLoaded ? "確認進入" : "載入寶貝資料中...";
+    }
+
+    // 1. 啟動時先讀取本機快取，立即顯示關主畫面
+    try {
+      const cached = JSON.parse(localStorage.getItem(CORE_CACHE_KEY) || "null");
+      if (cached) {
+        if (cached.guardians) state.dbData.guardians = cached.guardians;
+        if (cached.kids) state.dbData.kids = cached.kids;
+        if (cached.deletedDemoKids) state.dbData.deletedDemoKids = cached.deletedDemoKids;
+        if (cached.settings) state.dbData.settings = { ...DEFAULT_SETTINGS, ...cached.settings };
+        state.coreLoaded = true;
+      }
+    } catch (e) {}
+
+    updateConfirmBtnState();
+    renderAll();
+
+    // 非同步載入本機快取的外框與自訂圖章
+    Promise.all([idbGet("customFrames"), idbGet("customStamps")]).then(([frames, stamps]) => {
+      let updated = false;
+      if (frames && Object.keys(state.dbData.customFrames).length === 0) {
+        state.dbData.customFrames = frames;
+        updated = true;
+      }
+      if (stamps && Object.keys(state.dbData.customStamps).length === 0) {
+        state.dbData.customStamps = stamps;
+        updated = true;
+      }
+      if (updated) scheduleRender();
     });
+
+    // 2. 分流監聽 Firebase 節點（先載輕量核心，再於背景載入大型外框與圖章）
+    const loadedPaths = new Set();
+    const corePaths = ["guardians", "kids", "deletedDemoKids", "settings", "tasks", "stamps", "redemptions", "archivedStats"];
+    const heavyPaths = ["customStamps", "customFrames"];
+
+    function updateSyncStatus() {
+      const el = document.getElementById("sync-status");
+      const readyCore = ["guardians", "kids", "deletedDemoKids"].every((k) => loadedPaths.has(k));
+      const readyHeavy = heavyPaths.every((k) => loadedPaths.has(k));
+      if (readyCore && !state.coreLoaded) {
+        state.coreLoaded = true;
+        updateConfirmBtnState();
+      }
+      if (readyCore && readyHeavy) {
+        el.textContent = "雲端已即時同步";
+      } else if (readyCore) {
+        el.textContent = "雲端已同步（背景載入外框中...）";
+      }
+    }
+
+    function bindNode(key, isHeavy = false) {
+      onValue(ref(db, `${ROOT_PATH}/${key}`), (snapshot) => {
+        const val = snapshot.val();
+        state.dbData[key] = key === "settings"
+          ? { ...DEFAULT_SETTINGS, ...(val || {}) }
+          : (val || {});
+
+        loadedPaths.add(key);
+
+        if (["guardians", "kids", "deletedDemoKids", "settings"].includes(key)) {
+          saveCoreCache();
+        } else if (isHeavy) {
+          idbSet(key, state.dbData[key]);
+        }
+
+        updateSyncStatus();
+
+        // 等印章、兌換紀錄、封存統計與自訂圖章都載入完成，再執行過期清理
+        if (["stamps", "redemptions", "archivedStats", "customStamps"].every((k) => loadedPaths.has(k))) {
+          cleanupExpiredRedeemedStamps();
+        }
+
+        scheduleRender();
+      }, (err) => {
+        document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
+      });
+    }
+
+    corePaths.forEach((k) => bindNode(k, false));
+    heavyPaths.forEach((k) => bindNode(k, true));
   </script>
 </body>
 </html>
