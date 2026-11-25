@@ -3076,14 +3076,13 @@
 
       const fileInput = document.getElementById("m-custom-frame-input");
 
-      // 點擊各級數外框卡片上傳替換
+      // 點擊各級數外框卡片開啟大圖預覽
       document.querySelectorAll(".frame-overview-card[data-lvl]").forEach((card) => {
         card.onclick = () => {
-          uploadTargetLevel = Number(card.dataset.lvl);
-          fileInput.value = "";
-          fileInput.click();
+          openFramePreviewModal(Number(card.dataset.lvl));
         };
       });
+
 
       // 點擊「＋」新增下一級自訂外框
       document.getElementById("btn-add-custom-frame").onclick = () => {
@@ -3133,6 +3132,67 @@
           showToast(`升級門檻已設定為：每 ${inputVal} 章一級`);
         }
         closeModal();
+      };
+    }
+    // 單一等級外框大圖預覽與上傳 Modal
+    function openFramePreviewModal(targetLvl) {
+      const kid = getActiveKids()[state.currentKidId];
+      if (!kid) return;
+
+      const customFrames = state.dbData.customFrames || {};
+      const hasCustom = Boolean(customFrames[targetLvl] && customFrames[targetLvl].image);
+      const frameName = targetLvl > 20
+        ? (customFrames[targetLvl]?.name || "自訂外框")
+        : (hasCustom ? "已自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1]);
+
+      openModal(`
+        <h3 class="modal-title">LVL ${targetLvl} 外框預覽</h3>
+        <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
+          <div style="position:relative; width:160px; height:160px; display:flex; align-items:center; justify-content:center;">
+            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
+              ${renderKidAvatarHTML(kid)}
+            </div>
+            <div class="avatar-frame">${getFrameSVG(targetLvl)}</div>
+          </div>
+          <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${targetLvl}</span>
+          <div style="font-size:13px; color:#6b7280; margin-top:6px;">${frameName}</div>
+        </div>
+        <p style="text-align:center; font-size:12px; color:#9ca3af; margin:0 0 4px;">
+          支援去背 PNG / WebP / GIF 動圖（GIF 限 2MB 內）
+        </p>
+        <input type="file" id="m-preview-frame-input" accept="image/gif,image/png,image/webp,image/*" class="hidden" />
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-preview-back">返回</button>
+          <button class="btn btn-primary" id="m-preview-upload">上傳新頭框</button>
+        </div>`);
+
+      const previewFileInput = document.getElementById("m-preview-frame-input");
+
+      document.getElementById("m-preview-back").onclick = openLevelFramesModal;
+      document.getElementById("m-preview-upload").onclick = () => {
+        previewFileInput.value = "";
+        previewFileInput.click();
+      };
+
+      previewFileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          const webpBase64 = await compressFrameImageFile(file);
+          const frameData = {
+            level: targetLvl,
+            name: targetLvl > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1],
+            image: webpBase64,
+            timestamp: Date.now()
+          };
+          await set(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`), frameData);
+          if (!state.dbData.customFrames) state.dbData.customFrames = {};
+          state.dbData.customFrames[targetLvl] = frameData;
+          showToast(`已更新 LVL ${targetLvl} 外框！`);
+          openFramePreviewModal(targetLvl);
+        } catch (err) {
+          showToast(err?.message || "外框上傳失敗，請重試");
+        }
       };
     }
 
