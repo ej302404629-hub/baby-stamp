@@ -2453,8 +2453,18 @@
         showToast("測試用預設寶貝不支援更換照片");
         return;
       }
+      const { lvl } = getKidLevelAndTotal(state.currentKidId);
       openModal(`
         <h3 class="modal-title">更換寶貝頭像</h3>
+        <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
+          <div style="position:relative; width:140px; height:140px; display:flex; align-items:center; justify-content:center;">
+            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
+              ${renderKidAvatarHTML(kid)}
+            </div>
+            <div class="avatar-frame" style="width:140px; height:140px;">${getFrameSVG(lvl)}</div>
+          </div>
+          <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${lvl}</span>
+        </div>
         <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
           是否要為「<strong>${kid.name}</strong>」上傳新的頭像照片？
         </p>
@@ -2474,6 +2484,7 @@
         input.click();
       };
     }
+
 
     // 選擇頭像照片後，開啟縮放與移動剪裁視窗
     document.getElementById("kid-avatar-reupload-input").onchange = (e) => {
