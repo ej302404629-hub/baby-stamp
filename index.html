@@ -659,13 +659,15 @@
       color: #fff;
       padding: 12px 16px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
+      gap: 8px;
       z-index: 50;
       box-shadow: 0 -4px 16px rgba(0,0,0,0.2);
     }
     .redeem-bar-count { font-size: 15px; font-weight: 700; }
-    .redeem-bar-actions { display: flex; gap: 8px; }
+    .redeem-bar-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 
     /* 兌換紀錄 */
     .redemption-item {
@@ -1073,6 +1075,59 @@
       transition: opacity 0.25s;
     }
     .toast.show { opacity: 1; }
+    /* 選擇關主確認後的淡出與歡迎轉場 */
+    #page-guardian {
+      transition: opacity 0.35s ease;
+    }
+    #page-guardian.fading-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .guardian-welcome-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.28s ease;
+    }
+    .guardian-welcome-overlay.fade-out {
+      opacity: 0;
+    }
+    .welcome-avatar-fly {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 140px;
+      height: 140px;
+      margin-left: -70px;
+      margin-top: -70px;
+      border-radius: 50%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      will-change: transform, opacity;
+    }
+    .welcome-greeting {
+      position: fixed;
+      left: 50%;
+      top: calc(50% - 118px);
+      transform: translate(-50%, 12px);
+      font-size: 28px;
+      font-weight: 900;
+      color: #111827;
+      white-space: nowrap;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      text-shadow: 0 2px 10px rgba(255, 255, 255, 0.85);
+    }
+    .welcome-greeting.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    
   </style>
 </head>
 <body>
@@ -1081,7 +1136,7 @@
 
     <!-- 頁面 1：選擇關主 -->
     <section id="page-guardian" class="page-section">
-      <h1 class="page-title">請選擇今日關主</h1>
+      <h1 class="page-title">請選擇關主身份</h1>
       <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色（長按可刪除）</p>
       <div class="guardian-grid" id="guardian-grid"></div>
       <button class="btn btn-primary btn-block" id="btn-confirm-guardian">確認進入</button>
@@ -1210,6 +1265,11 @@
   <input type="file" id="kid-avatar-reupload-input" accept="image/*" class="hidden" />
 
   <div id="toast" class="toast"></div>
+  <!-- 關主進場歡迎動畫層 -->
+  <div id="guardian-welcome-overlay" class="guardian-welcome-overlay hidden">
+    <div id="welcome-greeting" class="welcome-greeting"></div>
+    <div id="welcome-avatar" class="welcome-avatar-fly"></div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
@@ -1241,14 +1301,6 @@
       aunt: { id: "aunt", name: "阿姨", color: "#f97316", bg: "#ffedd5", avatarType: "aunt" }
     };
 
-    const EXTRA_COLORS = [
-      { color: "#10b981", bg: "#d1fae5" },
-      { color: "#eab308", bg: "#fef9c3" },
-      { color: "#6366f1", bg: "#e0e7ff" },
-      { color: "#ef4444", bg: "#fee2e2" },
-      { color: "#06b6d4", bg: "#cffafe" }
-    ];
-
     const DEMO_KIDS = {
       demo_sister1: { id: "demo_sister1", name: "姐姐", birthday: "2020-05-10", avatar: "demo_sis1", isDemo: true },
       demo_sister2: { id: "demo_sister2", name: "妹妹", birthday: "2022-08-20", avatar: "demo_sis2", isDemo: true }
@@ -1261,6 +1313,8 @@
       dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
       currentGuardianId: "dad",
       currentKidId: null,
+      currentPage: "guardian",
+      lastKnownToday: getTodayStr(),      
       currentTab: "tasks",
       bankSubTab: "my", // "my" | "punished"
       viewDate: getTodayStr(),
@@ -1318,6 +1372,28 @@
 
     function uid(prefix = "id") {
       return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    }
+    function escapeHTML(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    const LAST_GUARDIAN_KEY = `baby_stamp_last_guardian_${FAMILY_KEY}`;
+    function saveLastGuardian(guardianId) {
+      try {
+        if (guardianId) localStorage.setItem(LAST_GUARDIAN_KEY, guardianId);
+      } catch (e) {}
+    }
+    function getSavedGuardianId() {
+      try {
+        return localStorage.getItem(LAST_GUARDIAN_KEY) || "";
+      } catch (e) {
+        return "";
+      }
     }
 
     // === 取得各關主獨立的蓋章模式設定（未設定過預設關主圖示）===
@@ -2353,6 +2429,7 @@
 
     // === 頁面切換 ===
     function showPage(pageName) {
+      state.currentPage = pageName;
       state.editMode = null;
       state.editSelectedIds.clear();
       updateEditBar();
@@ -2392,18 +2469,22 @@
         state.currentGuardianId = guardianKeys[0];
       }
       applyGuardianTheme(state.currentGuardianId);
-      renderGuardianPage();
-      renderKidPage();
-      if (state.currentKidId) {
+
+      if (state.currentPage === "guardian") {
+        renderGuardianPage();
+      } else if (state.currentPage === "kid") {
+        renderKidPage();
+      } else if (state.currentPage === "main" && state.currentKidId) {
         const kids = getActiveKids();
         if (!kids[state.currentKidId]) {
           state.currentKidId = Object.keys(kids)[0] || null;
         }
         renderMainHeader();
-        renderTaskWall();
-        renderStampBank();
-        renderRedemptionHistory();
+        if (state.currentTab === "tasks") renderTaskWall();
+        else if (state.currentTab === "bank") renderStampBank();
+        else if (state.currentTab === "history") renderRedemptionHistory();
       }
+
       if (state.customStampModalOpen) {
         renderCustomStampsModalContent();
       }
@@ -2422,7 +2503,7 @@
         card.innerHTML = `
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <div class="guardian-avatar">${getGuardianSVG(g)}</div>
-          <div class="guardian-name">${g.name}</div>`;
+          <div class="guardian-name">${escapeHTML(g.name)}</div>`;
 
         attachLongPress(card, () => enterEditMode("guardian", g.id));
         card.onclick = () => {
@@ -2474,7 +2555,7 @@
             </div>
             <div class="avatar-frame" style="width:88px; height:88px;">${getFrameSVG(lvl)}</div>
           </div>
-          <div class="kid-card-name">${kid.name} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
+          <div class="kid-card-name">${escapeHTML(kid.name)} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
           ${kid.isDemo ? '<span class="demo-badge">測試用預設寶貝</span>' : ""}`;
 
@@ -2807,12 +2888,13 @@
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           ${isEditing ? `<div class="task-drag-handle" title="按住拖曳排序">☰</div>` : ""}
           <div class="task-info">
-            <div class="task-title">${task.name}</div>
+            <div class="task-title">${escapeHTML(task.name)}</div>
             <div class="task-meta">${modeOnDate === "single" ? "單次任務" : "例行任務"}${stampCount > 1 ? ` · 可得 ${stampCount} 章` : ""}${!isEditing && taskStamps.length > 0 ? " · 連點兩下可取消" : ""}</div>
           </div>`;
 
-        attachLongPress(row, () => enterEditMode("task", task.id));
-        if (isEditing) {
+        if (!isEditing) {
+          attachLongPress(row, () => enterEditMode("task", task.id));
+        } else {
           row.onclick = () => {
             if (state.ignoreNextClick) return;
             toggleEditSelection(task.id);
@@ -2820,6 +2902,7 @@
           const handle = row.querySelector(".task-drag-handle");
           if (handle) attachTaskDragSort(row, handle, listEl);
         }
+
 
         const boxesWrap = document.createElement("div");
         boxesWrap.className = "stamp-boxes-wrap";
@@ -2897,6 +2980,8 @@
       });
 
       handle.addEventListener("click", (e) => e.stopPropagation());
+      handle.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+      handle.addEventListener("mousedown", (e) => e.stopPropagation());
     }
 
     function saveTaskOrderFromDOM(listEl) {
@@ -2962,18 +3047,8 @@
           timestamp: now,
           redeemedId: null
         };
-        set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), {
-          id: stampId,
-          kidId: state.currentKidId,
-          taskId: task.id,
-          slotIndex,
-          date: state.viewDate,
-          guardianId: state.currentGuardianId,
-          mode,
-          customStampId: mode === "custom" ? (customStampId || null) : null,
-          timestamp: now,
-          redeemedId: null
-        });
+        set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), newStamp);
+
         showToast("蓋章成功！");
       } else {
         if (state.lastTap.key === tapKey && now - state.lastTap.time < 420) {
@@ -3125,8 +3200,8 @@
         row.style.borderLeft = `6px solid ${g.color}`;
         row.innerHTML = `
           <div class="redemption-left">
-            <div class="redemption-title">${rec.itemName}</div>
-            <div class="redemption-meta">使用 <strong>${rec.count}</strong> 個圖章 · 關主：${g.name}</div>
+            <div class="redemption-title">${escapeHTML(rec.itemName)}</div>
+            <div class="redemption-meta">使用 <strong>${rec.count}</strong> 個圖章 · 關主：${escapeHTML(g.name)}</div>
           </div>
           <div class="redemption-right">
             <span>${rec.date}</span>
@@ -3950,6 +4025,7 @@
         btn.innerHTML = `<span>${g.name}</span><span>${g.id === state.currentGuardianId ? "目前使用" : ""}</span>`;
         btn.onclick = () => {
           state.currentGuardianId = g.id;
+          saveLastGuardian(g.id);
           closeModal();
           renderAll();
           showToast(`已切換關主：${g.name}`);
@@ -4189,11 +4265,89 @@
       showToast(`已切換寶貝：${nextKid.name}`);
     };
 
+    let isPlayingWelcome = false;
+    function playGuardianWelcomeAnimation({ fromCenter = false } = {}) {
+      if (isPlayingWelcome) return;
+      isPlayingWelcome = true;
+
+      const guardian = getGuardianForDisplay(state.currentGuardianId);
+      applyGuardianTheme(state.currentGuardianId);
+      state.currentPage = "welcome";
+
+      const pageGuardian = document.getElementById("page-guardian");
+      const overlay = document.getElementById("guardian-welcome-overlay");
+      const avatarEl = document.getElementById("welcome-avatar");
+      const greetingEl = document.getElementById("welcome-greeting");
+
+      avatarEl.innerHTML = getGuardianSVG(guardian);
+      greetingEl.textContent = `Hi ${guardian.name}`;
+      greetingEl.classList.remove("show");
+      overlay.classList.remove("hidden", "fade-out");
+
+      let hiddenSrcAvatar = null;
+
+      if (fromCenter) {
+        pageGuardian.classList.add("hidden");
+        avatarEl.style.transition = "none";
+        avatarEl.style.opacity = "0";
+        avatarEl.style.transform = "translate(0px, 0px) scale(0.35)";
+        avatarEl.offsetHeight;
+        avatarEl.style.transition = "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease";
+        avatarEl.style.opacity = "1";
+        avatarEl.style.transform = "translate(0px, 0px) scale(1)";
+      } else {
+        const srcAvatar = document.querySelector("#guardian-grid .guardian-card.selected .guardian-avatar");
+        let dx = 0, dy = 0, startScale = 0.45;
+        if (srcAvatar) {
+          const rect = srcAvatar.getBoundingClientRect();
+          dx = rect.left + rect.width / 2 - window.innerWidth / 2;
+          dy = rect.top + rect.height / 2 - window.innerHeight / 2;
+          startScale = rect.width / 140;
+          srcAvatar.style.visibility = "hidden";
+          hiddenSrcAvatar = srcAvatar;
+        }
+        pageGuardian.classList.add("fading-out");
+
+        avatarEl.style.transition = "none";
+        avatarEl.style.opacity = "1";
+        avatarEl.style.transform = `translate(${dx}px, ${dy}px) scale(${startScale})`;
+        avatarEl.offsetHeight;
+        avatarEl.style.transition = "transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)";
+        avatarEl.style.transform = "translate(0px, 0px) scale(1)";
+      }
+
+      // 圖示快到中心時淡入「Hi <關主名稱>」（0.4s 後完全顯示）
+      setTimeout(() => {
+        greetingEl.classList.add("show");
+      }, 420);
+
+      // 完全顯示後停留 1.5 秒（420 + 400 + 1500 = 2320ms），再進入選擇寶貝頁
+      const finishWelcome = () => {
+        if (!state.coreLoaded) {
+          setTimeout(finishWelcome, 120);
+          return;
+        }
+        overlay.classList.add("fade-out");
+        setTimeout(() => {
+          overlay.classList.add("hidden");
+          overlay.classList.remove("fade-out");
+          greetingEl.classList.remove("show");
+          pageGuardian.classList.remove("fading-out");
+          if (hiddenSrcAvatar) hiddenSrcAvatar.style.visibility = "";
+          isPlayingWelcome = false;
+          showPage("kid");
+        }, 280);
+      };
+      setTimeout(finishWelcome, 2320);
+    }
+
     document.getElementById("btn-confirm-guardian").onclick = () => {
       if (!state.coreLoaded) return showToast("寶貝資料載入中，請稍候...");
       if (Object.keys(getAllGuardians()).length === 0) return showToast("請先新增至少一位關主");
-      showPage("kid");
+      saveLastGuardian(state.currentGuardianId);
+      playGuardianWelcomeAnimation({ fromCenter: false });
     };
+
     document.getElementById("btn-back-guardian").onclick = () => showPage("guardian");
     document.getElementById("btn-open-add-kid").onclick = () => {
       exitEditMode();
@@ -4234,10 +4388,22 @@
         document.getElementById("tab-bank").classList.toggle("hidden", state.currentTab !== "bank");
         document.getElementById("tab-history").classList.toggle("hidden", state.currentTab !== "history");
         updateRedeemBar();
+        renderAll();
       };
     });
 
     // 日期切換按鈕與左右滑動手勢
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) return;
+      const nowToday = getTodayStr();
+      if (nowToday !== state.lastKnownToday) {
+        if (state.viewDate === state.lastKnownToday) {
+          state.viewDate = nowToday;
+        }
+        state.lastKnownToday = nowToday;
+        renderAll();
+      }
+    });
     function shiftDate(delta) {
       const target = addDays(state.viewDate, delta);
       if (target > getTodayStr()) return;
@@ -4354,7 +4520,14 @@
     } catch (e) {}
 
     updateConfirmBtnState();
-    renderAll();
+    const savedGuardianId = getSavedGuardianId();
+    const initialGuardians = getAllGuardians();
+    if (savedGuardianId && initialGuardians[savedGuardianId]) {
+      state.currentGuardianId = savedGuardianId;
+      playGuardianWelcomeAnimation({ fromCenter: true });
+    } else {
+      renderAll();
+    }
 
     // 非同步載入本機快取的外框與自訂圖章
     Promise.all([idbGet("customFrames"), idbGet("customStamps")]).then(([frames, stamps]) => {
