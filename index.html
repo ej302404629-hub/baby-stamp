@@ -2611,6 +2611,14 @@
       "熾熱熔岩", "幻影星辰", "不朽黎明", "魔幻雷霆", "極致星空",
       "神話龍魂", "聖域羽翼", "秩序史詩", "永恆主宰", "終極至尊"
     ];
+    function getFrameDisplayName(lvl) {
+      const customFrame = state.dbData.customFrames && state.dbData.customFrames[lvl];
+      if (customFrame && customFrame.image) {
+        const customName = typeof customFrame.name === "string" ? customFrame.name.trim() : "";
+        return customName || "已自訂";
+      }
+      return FRAME_LEVEL_NAMES[lvl - 1] || `等級 ${lvl}`;
+    }
 
     function getFrameSVG(lvl) {
       const customFrame = state.dbData.customFrames && state.dbData.customFrames[lvl];
@@ -2868,8 +2876,9 @@
         closeFrameEditorModal();
       } else if (data.type === "FRAME_EDITOR_RESULT" && typeof data.dataUrl === "string") {
         const cb = frameEditorCallback;
+        const customName = typeof data.frameName === "string" ? data.frameName.trim() : "";
         closeFrameEditorModal();
-        if (typeof cb === "function") cb(data.dataUrl);
+        if (typeof cb === "function") cb(data.dataUrl, customName || "已自訂");
       }
     });
 
@@ -4111,11 +4120,7 @@
       clearTimeout(levelUpCloseTimer);
 
       const openedAt = Date.now();
-      const customFrames = state.dbData.customFrames || {};
-      const frameTitle = newLvl > 20
-        ? (customFrames[newLvl]?.name || "自訂外框")
-        : (FRAME_LEVEL_NAMES[newLvl - 1] || `等級 ${newLvl}`);
-
+      const frameTitle = getFrameDisplayName(newLvl);
       card.innerHTML = `
         <h2 class="levelup-title">🎉 恭喜升級！</h2>
         <div class="levelup-avatar-wrap">
@@ -4259,7 +4264,7 @@
       for (let i = 1; i <= maxLevel; i++) {
         const isCurrent = i === lvl;
         const hasCustom = Boolean(customFrames[i] && customFrames[i].image);
-        const name = i > 20 ? (customFrames[i]?.name || "自訂外框") : (hasCustom ? "已自訂" : FRAME_LEVEL_NAMES[i - 1]);
+        const name = escapeHTML(getFrameDisplayName(i));
         gridHTML += `
           <div class="frame-overview-card ${isCurrent ? 'active-current' : ''}" data-lvl="${i}" title="點擊上傳圖片替換 LVL ${i} 外框">
             ${hasCustom ? `<button type="button" class="del-custom-frame-btn" data-lvl="${i}" title="${i <= 20 ? '恢復預設外框' : '刪除此自訂外框'}" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:900;cursor:pointer;z-index:5;line-height:1;">×</button>` : ""}
@@ -4317,24 +4322,26 @@
 
       // 點擊「＋」新增下一級自訂外框
       document.getElementById("btn-add-custom-frame").onclick = () => {
-        openFrameEditorModal(async (dataUrl) => {
+        openFrameEditorModal(async (dataUrl, frameName) => {
           try {
+            const finalName = (frameName && frameName.trim()) || "已自訂";
             const frameData = {
               level: nextLevel,
-              name: "自訂外框",
+              name: finalName,
               image: dataUrl,
               timestamp: Date.now()
             };
             await set(ref(db, `${ROOT_PATH}/customFrames/${nextLevel}`), frameData);
             if (!state.dbData.customFrames) state.dbData.customFrames = {};
             state.dbData.customFrames[nextLevel] = frameData;
-            showToast(`已新增 LVL ${nextLevel} 外框！`);
+            showToast(`已新增 LVL ${nextLevel} 外框「${finalName}」！`);
             openLevelFramesModal();
           } catch (err) {
             showToast(err?.message || "外框上傳失敗，請重試");
           }
         });
       };
+
 
       // 點擊右上角 × 恢復預設或刪除自訂外框
       document.querySelectorAll(".del-custom-frame-btn").forEach((btn) => {
@@ -4366,11 +4373,7 @@
       const kid = getActiveKids()[state.currentKidId];
       if (!kid) return;
 
-      const customFrames = state.dbData.customFrames || {};
-      const hasCustom = Boolean(customFrames[targetLvl] && customFrames[targetLvl].image);
-      const frameName = targetLvl > 20
-        ? (customFrames[targetLvl]?.name || "自訂外框")
-        : (hasCustom ? "已自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1]);
+      const frameName = getFrameDisplayName(targetLvl);
 
       openModal(`
         <h3 class="modal-title">LVL ${targetLvl} 外框預覽</h3>
@@ -4382,7 +4385,7 @@
             <div class="avatar-frame">${getFrameSVG(targetLvl)}</div>
           </div>
           <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${targetLvl}</span>
-          <div style="font-size:13px; color:#6b7280; margin-top:6px;">${frameName}</div>
+          <div style="font-size:13px; color:#6b7280; margin-top:6px;">${escapeHTML(frameName)}</div>
         </div>
         <p style="text-align:center; font-size:12px; color:#9ca3af; margin:0 0 4px;">
           點擊「上傳新頭框」開啟去背與定位工具（支援靜態圖與 GIF 動圖，限 2MB 內）
@@ -4394,18 +4397,19 @@
 
       document.getElementById("m-preview-back").onclick = openLevelFramesModal;
       document.getElementById("m-preview-upload").onclick = () => {
-        openFrameEditorModal(async (dataUrl) => {
+        openFrameEditorModal(async (dataUrl, customName) => {
           try {
+            const finalName = (customName && customName.trim()) || "已自訂";
             const frameData = {
               level: targetLvl,
-              name: targetLvl > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1],
+              name: finalName,
               image: dataUrl,
               timestamp: Date.now()
             };
             await set(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`), frameData);
             if (!state.dbData.customFrames) state.dbData.customFrames = {};
             state.dbData.customFrames[targetLvl] = frameData;
-            showToast(`已更新 LVL ${targetLvl} 外框！`);
+            showToast(`已更新 LVL ${targetLvl} 外框「${finalName}」！`);
             openFramePreviewModal(targetLvl);
           } catch (err) {
             showToast(err?.message || "外框上傳失敗，請重試");

@@ -53,6 +53,40 @@
       justify-content: center;
     }
 
+    /* 頭框名稱區塊 */
+    .name-box {
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 9px 12px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .name-label {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+    .name-input {
+      flex: 1;
+      min-width: 0;
+      border: 1.5px solid #d1d5db;
+      border-radius: 9px;
+      padding: 7px 10px;
+      font-size: 13px;
+      color: var(--text-main);
+      background: #ffffff;
+      outline: none;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    .name-input:focus {
+      border-color: var(--theme-color);
+    }
+
     /* 開啟檔案區塊 */
     .file-box {
       background: #f9fafb;
@@ -416,6 +450,12 @@
     <button type="button" class="close-btn" id="btn-close-top" title="關閉">×</button>
   </div>
 
+  <!-- 頭框名稱區塊 -->
+  <div class="name-box">
+    <label class="name-label" for="frame-name-input">頭框名稱</label>
+    <input type="text" id="frame-name-input" class="name-input" maxlength="12" placeholder="自由命名（未填預設為「已自訂」）" />
+  </div>
+
   <!-- 單檔開啟區塊 -->
   <div class="file-box">
     <div class="file-info">
@@ -534,7 +574,6 @@
 
     const OUT_SIZE = 250;
     const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB 上限
-    // 頭像直徑佔外框寬度比例（對應主程式 63/87、100/160、126/184 的平均比例約 67%）
     const AVATAR_DIAMETER_RATIO = 0.67;
 
     // 讀取主程式主題色
@@ -576,6 +615,7 @@
 
     // DOM 元素
     const el = {
+      frameNameInput: document.getElementById("frame-name-input"),
       fileInput: document.getElementById("file-input"),
       btnOpenFile: document.getElementById("btn-open-file"),
       fileNameDisplay: document.getElementById("file-name-display"),
@@ -856,7 +896,6 @@
       const r = (size * AVATAR_DIAMETER_RATIO) / 2;
 
       ctx.save();
-      // 淡黃色圓形頭像底色
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.fillStyle = "#fef08a";
@@ -867,21 +906,18 @@
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // 腮紅
       ctx.fillStyle = "rgba(251, 113, 133, 0.45)";
       ctx.beginPath();
       ctx.arc(cx - r * 0.46, cy + r * 0.1, r * 0.14, 0, Math.PI * 2);
       ctx.arc(cx + r * 0.46, cy + r * 0.1, r * 0.14, 0, Math.PI * 2);
       ctx.fill();
 
-      // 眼睛
       ctx.fillStyle = "#1f2937";
       ctx.beginPath();
       ctx.arc(cx - r * 0.28, cy - r * 0.14, r * 0.09, 0, Math.PI * 2);
       ctx.arc(cx + r * 0.28, cy - r * 0.14, r * 0.09, 0, Math.PI * 2);
       ctx.fill();
 
-      // 微笑嘴巴
       ctx.strokeStyle = "#b45309";
       ctx.lineWidth = 3.2;
       ctx.lineCap = "round";
@@ -918,9 +954,7 @@
       const ctx = el.posCanvas.getContext("2d");
       ctx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
 
-      // 1. 先畫中間圓形笑臉頭像（符合頭像與外框比例）
       drawSmileyAvatar(ctx, OUT_SIZE);
-      // 2. 再將外框疊加於上方
       drawFrameWithTransform(ctx, frame.rgba, state.width, state.height, OUT_SIZE);
     }
 
@@ -1297,7 +1331,6 @@
             drawFrameWithTransform(outCtx, frames[i].rgba, state.width, state.height, OUT_SIZE);
             const imgData = outCtx.getImageData(0, 0, OUT_SIZE, OUT_SIZE).data;
 
-            // 清理半透明邊緣以獲得乾淨的 1-bit GIF 透明效果
             for (let p = 0; p < imgData.length; p += 4) {
               if (imgData[p + 3] >= 128) {
                 imgData[p + 3] = 255;
@@ -1344,15 +1377,16 @@
           return;
         }
 
+        const frameName = (el.frameNameInput.value || "").trim() || "已自訂";
         el.statusText.textContent = `輸出完成（${Math.round(byteLength / 1024)} KB），上傳中...`;
         stopPlayback();
 
         if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: "FRAME_EDITOR_RESULT", dataUrl }, "*");
+          window.parent.postMessage({ type: "FRAME_EDITOR_RESULT", dataUrl, frameName }, "*");
         } else {
           const a = document.createElement("a");
           a.href = dataUrl;
-          a.download = `frame-250x250.${state.isGif ? "gif" : "png"}`;
+          a.download = `${frameName}-250x250.${state.isGif ? "gif" : "png"}`;
           a.click();
           el.statusText.textContent = "已下載結果檔案！";
           state.isWorking = false;
