@@ -22,6 +22,7 @@
       color: var(--text-main);
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
 
     .header {
@@ -141,6 +142,7 @@
       cursor: grab;
       transition: transform 0.15s, opacity 0.15s;
       touch-action: none;
+      -webkit-touch-callout: none;
     }
     .slot-filled.dragging-source {
       opacity: 0.35;
@@ -153,6 +155,7 @@
       border-radius: 12px;
       pointer-events: none;
       display: block;
+      -webkit-touch-callout: none;
     }
     .slot-order {
       position: absolute;
@@ -326,7 +329,7 @@
     }
 
     const state = {
-      images: [], // [{ id, thumbUrl, canvas, width, height }]
+      images: [], // [{ id, thumbUrl, canvas, size }]
       totalSeconds: 2.5,
       previewTimer: null,
       previewIndex: 0,
@@ -403,11 +406,14 @@
         delBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
         delBtn.addEventListener("click", (e) => {
           e.stopPropagation();
-          state.images.splice(index, 1);
-          renderAll();
+          const curIdx = Number(slot.dataset.index);
+          if (!Number.isNaN(curIdx)) {
+            state.images.splice(curIdx, 1);
+            renderAll();
+          }
         });
 
-        attachLongPressDrag(slot, index);
+        attachLongPressDrag(slot);
         slotsGrid.appendChild(slot);
       });
 
@@ -488,10 +494,31 @@
       updateInfoAndPreview();
     }
 
-    // === 長按拖曳重新排位（支援觸控與滑鼠）===
+    // === 長按拖曳重新排位（原地移動 DOM 節點，避免 Android 中斷觸控事件）===
     let dragState = null;
 
-    function attachLongPressDrag(slotEl, index) {
+    function clearAllGhosts() {
+      document.querySelectorAll(".drag-ghost").forEach((el) => el.remove());
+      document.querySelectorAll(".slot-filled.dragging-source").forEach((el) => {
+        el.classList.remove("dragging-source");
+      });
+    }
+
+    function finishActiveDrag() {
+      if (!dragState) {
+        clearAllGhosts();
+        return;
+      }
+      const cleanup = dragState.cleanup;
+      dragState = null;
+      if (typeof cleanup === "function") cleanup();
+      clearAllGhosts();
+      renderAll();
+    }
+
+    window.addEventListener("blur", finishActiveDrag);
+
+    function attachLongPressDrag(slotEl) {
       let pressTimer = null;
       let startX = 0;
       let startY = 0;
@@ -502,6 +529,12 @@
           clearTimeout(pressTimer);
           pressTimer = null;
         }
+      };
+
+      const cleanupListeners = () => {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
       };
 
       const onPointerMove = (e) => {
@@ -524,12 +557,30 @@
         if (targetSlot) {
           const targetIdx = Number(targetSlot.dataset.index);
           if (!Number.isNaN(targetIdx) && targetIdx !== dragState.currentIndex) {
-            const [moved] = state.images.splice(dragState.currentIndex, 1);
+            const fromIdx = dragState.currentIndex;
+            const [moved] = state.images.splice(fromIdx, 1);
             state.images.splice(targetIdx, 0, moved);
+
+            // 原地移動 DOM 節點，不重建 innerHTML，保持觸控事件不中斷
+            const filledSlots = [...slotsGrid.querySelectorAll(".slot-filled")];
+            const movedEl = filledSlots[fromIdx];
+            const targetEl = filledSlots[targetIdx];
+            if (movedEl && targetEl) {
+              if (targetIdx > fromIdx) {
+                slotsGrid.insertBefore(movedEl, targetEl.nextSibling);
+              } else {
+                slotsGrid.insertBefore(movedEl, targetEl);
+              }
+            }
+
+            // 同步更新每個格子的順序編號與 dataset.index
+            [...slotsGrid.querySelectorAll(".slot-filled")].forEach((el, idx) => {
+              el.dataset.index = String(idx);
+              const badge = el.querySelector(".slot-order");
+              if (badge) badge.textContent = String(idx + 1);
+            });
+
             dragState.currentIndex = targetIdx;
-            renderSlots();
-            const newSource = slotsGrid.querySelector(`.slot-filled[data-index="${targetIdx}"]`);
-            if (newSource) newSource.classList.add("dragging-source");
             restartPreviewLoop();
           }
         }
@@ -540,21 +591,18 @@
         clearPress();
         cleanupListeners();
         if (dragState) {
-          dragState.ghost.remove();
           dragState = null;
+          clearAllGhosts();
           renderAll();
         }
-      };
-
-      const cleanupListeners = () => {
-        window.removeEventListener("pointermove", onPointerMove);
-        window.removeEventListener("pointerup", onPointerUp);
-        window.removeEventListener("pointercancel", onPointerUp);
       };
 
       slotEl.addEventListener("pointerdown", (e) => {
         if (e.button !== undefined && e.button !== 0) return;
         if (e.target.closest(".slot-del-btn")) return;
+
+        // 確保沒有殘留的舊拖曳狀態
+        if (dragState) finishActiveDrag();
 
         pointerId = e.pointerId;
         startX = e.clientX;
@@ -566,17 +614,28 @@
 
         pressTimer = setTimeout(() => {
           pressTimer = null;
+          const curIdx = Number(slotEl.dataset.index);
+          if (Number.isNaN(curIdx) || !state.images[curIdx]) {
+            cleanupListeners();
+            return;
+          }
+
           if (navigator.vibrate) navigator.vibrate(25);
+          clearAllGhosts();
 
           const ghost = document.createElement("div");
           ghost.className = "drag-ghost";
           ghost.style.left = `${startX}px`;
           ghost.style.top = `${startY}px`;
-          ghost.innerHTML = `<img src="${state.images[index].thumbUrl}" />`;
+          ghost.innerHTML = `<img src="${state.images[curIdx].thumbUrl}" />`;
           document.body.appendChild(ghost);
 
           slotEl.classList.add("dragging-source");
-          dragState = { currentIndex: index, ghost };
+          dragState = {
+            currentIndex: curIdx,
+            ghost,
+            cleanup: cleanupListeners
+          };
         }, 320);
       });
 
@@ -848,6 +907,7 @@
     // === 確認上傳 / 取消 ===
     function closeSelf() {
       stopPreviewLoop();
+      finishActiveDrag();
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: "GIF_MAKER_CLOSE" }, "*");
       } else {
@@ -864,7 +924,6 @@
       btnConfirm.disabled = true;
       statusText.textContent = "正在製作 GIF 動圖，請稍候...";
 
-      // 使用 setTimeout 讓按鈕與文字狀態先更新到畫面
       setTimeout(() => {
         try {
           const outSize = getOutputSize();
@@ -884,7 +943,6 @@
           if (window.parent && window.parent !== window) {
             window.parent.postMessage({ type: "GIF_MAKER_RESULT", dataUrl }, "*");
           } else {
-            // 若單獨開啟此頁面測試，改為直接下載 GIF
             const a = document.createElement("a");
             a.href = dataUrl;
             a.download = `baby-avatar-${Date.now()}.gif`;
