@@ -241,8 +241,8 @@
       gap: 10px;
     }
     .header-avatar {
-      width: 87px;
-      height: 87px;
+      width: 112px;
+      height: 112px;
       flex-shrink: 0;
       position: relative;
       background: transparent;
@@ -252,8 +252,8 @@
       cursor: pointer;
     }
     .header-avatar-inner {
-      width: 63px;
-      height: 63px;
+      width: 75px;
+      height: 75px;
       border-radius: 50%;
       overflow: hidden;
       background: #f3f4f6;
@@ -261,6 +261,7 @@
       align-items: center;
       justify-content: center;
     }
+
 
     .header-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
     
@@ -1020,14 +1021,15 @@
       box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
     }
     .frame-overview-display {
-      width: 46px;
-      height: 46px;
+      width: 48px;
+      height: 48px;
       margin: 0 auto 4px;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
     }
+
     .frame-overview-display-inner {
       width: 32px;
       height: 32px;
@@ -1391,14 +1393,15 @@
     }
     .levelup-avatar-wrap {
       position: relative;
-      width: 136px;
-      height: 136px;
+      width: 137px;
+      height: 137px;
       margin: 0 auto 12px;
       display: flex;
       align-items: center;
       justify-content: center;
       animation: levelUpFloat 1.6s ease-in-out infinite;
     }
+
     .levelup-avatar-inner {
       width: 92px;
       height: 92px;
@@ -1450,13 +1453,14 @@
     }
     .kid-switch-avatar-wrap {
       position: relative;
-      width: 184px;
-      height: 184px;
+      width: 188px;
+      height: 188px;
       display: flex;
       align-items: center;
       justify-content: center;
       filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.28));
     }
+
     .kid-switch-avatar-inner {
       width: 126px;
       height: 126px;
@@ -3035,11 +3039,11 @@
         card.innerHTML = `
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <!-- 這裡套用 SVG 等級外框 -->
-          <div class="kid-card-avatar" style="position:relative; width:88px; height:88px; border:none; border-radius:0; background:transparent;">
-            <div style="width:58px; height:58px; border-radius:50%; overflow:hidden; position:absolute; top:15px; left:15px;">
+          <div class="kid-card-avatar" style="position:relative; width:86px; height:86px; border:none; border-radius:0; background:transparent;">
+            <div style="width:58px; height:58px; border-radius:50%; overflow:hidden; position:absolute; top:14px; left:14px;">
               ${renderKidAvatarHTML(kid)}
             </div>
-            <div class="avatar-frame" style="width:88px; height:88px;">${getFrameSVG(lvl)}</div>
+            <div class="avatar-frame" style="width:86px; height:86px;">${getFrameSVG(lvl)}</div>
           </div>
           <div class="kid-card-name">${escapeHTML(kid.name)} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
@@ -3097,7 +3101,7 @@
       openModal(`
         <h3 class="modal-title">更換寶貝頭像</h3>
         <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
-          <div style="position:relative; width:158px; height:158px; display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center;">
             <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
               ${renderKidAvatarHTML(kid)}
             </div>
@@ -4091,6 +4095,7 @@
     // === 等級提升全螢幕慶祝特效（Canvas 彩帶撒花 + 升級卡片）===
     let levelUpAnimId = null;
     let levelUpAutoTimer = null;
+    let levelUpCloseTimer = null;
 
     function playLevelUpEffect(kidId, newLvl) {
       const kid = getActiveKids()[kidId];
@@ -4103,7 +4108,9 @@
 
       if (levelUpAnimId) cancelAnimationFrame(levelUpAnimId);
       clearTimeout(levelUpAutoTimer);
+      clearTimeout(levelUpCloseTimer);
 
+      const openedAt = Date.now();
       const customFrames = state.dbData.customFrames || {};
       const frameTitle = newLvl > 20
         ? (customFrames[newLvl]?.name || "自訂外框")
@@ -4177,8 +4184,9 @@
 
       const closeLevelUp = () => {
         clearTimeout(levelUpAutoTimer);
+        clearTimeout(levelUpCloseTimer);
         overlay.classList.add("fade-out");
-        setTimeout(() => {
+        levelUpCloseTimer = setTimeout(() => {
           if (levelUpAnimId) {
             cancelAnimationFrame(levelUpAnimId);
             levelUpAnimId = null;
@@ -4188,8 +4196,12 @@
         }, 280);
       };
 
-      document.getElementById("btn-close-levelup").onclick = closeLevelUp;
+      document.getElementById("btn-close-levelup").onclick = () => {
+        if (Date.now() - openedAt < 600) return;
+        closeLevelUp();
+      };
       overlay.onclick = (e) => {
+        if (Date.now() - openedAt < 1000) return;
         if (e.target === overlay) closeLevelUp();
       };
       levelUpAutoTimer = setTimeout(closeLevelUp, 4500);
@@ -4255,7 +4267,7 @@
               <div class="frame-overview-display-inner">
                 ${renderKidAvatarHTML(kid)}
               </div>
-              <div class="avatar-frame" style="width:46px; height:46px;">${getFrameSVG(i)}</div>
+              <div class="avatar-frame" style="width:48px; height:48px;">${getFrameSVG(i)}</div>
             </div>
             <div class="frame-overview-title" style="${isCurrent ? 'color:#f59e0b;' : ''}">LVL ${i}</div>
             <div class="frame-overview-desc">${name}</div>
@@ -4363,7 +4375,7 @@
       openModal(`
         <h3 class="modal-title">LVL ${targetLvl} 外框預覽</h3>
         <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
-          <div style="position:relative; width:160px; height:160px; display:flex; align-items:center; justify-content:center;">
+          <div style="position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center;">
             <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
               ${renderKidAvatarHTML(kid)}
             </div>
