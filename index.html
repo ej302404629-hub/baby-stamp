@@ -3048,11 +3048,11 @@
         card.innerHTML = `
           ${isEditing ? `<div class="edit-check-badge">${isEditSel ? "✓" : ""}</div>` : ""}
           <!-- 這裡套用 SVG 等級外框 -->
-          <div class="kid-card-avatar" style="position:relative; width:150px; height:150px; border:none; border-radius:0; background:transparent;">
-            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; position:absolute; top:25px; left:25px;">
+          <div class="kid-card-avatar" style="position:relative; width:120px; height:120px; border:none; border-radius:0; background:transparent;">
+            <div style="width:80px; height:80px; border-radius:50%; overflow:hidden; position:absolute; top:20px; left:20px;">
               ${renderKidAvatarHTML(kid)}
             </div>
-            <div class="avatar-frame" style="width:150px; height:150px;">${getFrameSVG(lvl)}</div>
+            <div class="avatar-frame" style="width:120px; height:120px;">${getFrameSVG(lvl)}</div>
           </div>
           <div class="kid-card-name">${escapeHTML(kid.name)} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
