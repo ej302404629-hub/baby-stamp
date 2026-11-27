@@ -241,8 +241,9 @@
       gap: 10px;
     }
     .header-avatar {
-      width: 58px;
-      height: 58px;
+      width: 87px;
+      height: 87px;
+      flex-shrink: 0;
       position: relative;
       background: transparent;
       display: flex;
@@ -251,8 +252,8 @@
       cursor: pointer;
     }
     .header-avatar-inner {
-      width: 42px;
-      height: 42px;
+      width: 63px;
+      height: 63px;
       border-radius: 50%;
       overflow: hidden;
       background: #f3f4f6;
@@ -260,6 +261,7 @@
       align-items: center;
       justify-content: center;
     }
+
     .header-avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
     
     /* 寶貝等級外框 (20 個等級的 CSS 設計) */
@@ -1075,6 +1077,33 @@
       transition: opacity 0.25s;
     }
     .toast.show { opacity: 1; }
+    /* GIF 製作外掛程式視窗 */
+    .gif-maker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.58);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 180;
+      padding: 14px;
+    }
+    .gif-maker-modal {
+      width: 100%;
+      max-width: 420px;
+      height: min(620px, 90vh);
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    }
+    .gif-maker-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    
     /* 選擇關主確認後的淡出與歡迎轉場 */
     #page-guardian {
       transition: opacity 0.35s ease;
@@ -1127,6 +1156,311 @@
       opacity: 1;
       transform: translate(-50%, 0);
     }
+    /* 兌換紀錄頁籤：大獎勵與常用獎勵區塊 */
+    .reward-goals-section {
+      margin-bottom: 16px;
+    }
+    .big-reward-card {
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: var(--radius);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 2px solid rgba(245, 158, 11, 0.35);
+      transition: transform 0.12s;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .big-reward-card:active { transform: scale(0.98); }
+    .big-reward-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .big-reward-badge {
+      font-size: 13px;
+      font-weight: 800;
+      color: #b45309;
+      background: #fef3c7;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .big-reward-edit-hint {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .big-reward-body {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .big-reward-img-box {
+      width: 84px;
+      height: 84px;
+      border-radius: 14px;
+      background: #f3f4f6;
+      border: 2px dashed #d1d5db;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 12px;
+      text-align: center;
+    }
+    .big-reward-img-box.has-img {
+      border-style: solid;
+      border-color: #fde68a;
+    }
+    .big-reward-img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+    }
+    .big-reward-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .big-reward-name {
+      font-size: 17px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .big-reward-progress-track {
+      width: 100%;
+      height: 12px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .big-reward-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+    .big-reward-progress-fill.done {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+    .big-reward-progress-text {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #4b5563;
+    }
+    .big-reward-remain {
+      color: var(--theme-color);
+    }
+    .big-reward-remain.done {
+      color: #16a34a;
+    }
+
+    .quick-rewards-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .quick-reward-card {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 14px;
+      padding: 10px 8px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      border: 2px solid transparent;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 76px;
+      transition: transform 0.12s;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .quick-reward-card:active { transform: scale(0.96); }
+    .quick-reward-card.empty {
+      border: 2px dashed #cbd5e1;
+      background: rgba(255, 255, 255, 0.65);
+      color: #6b7280;
+    }
+    .quick-reward-card.ready {
+      border-color: #22c55e;
+      background: #f0fdf4;
+    }
+    .quick-reward-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111827;
+      margin-bottom: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    .quick-reward-cost {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--theme-color);
+    }
+    .quick-reward-card.ready .quick-reward-cost {
+      color: #16a34a;
+    }
+
+    /* 等級提升全螢幕慶祝特效 */
+    .levelup-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      background: rgba(17, 24, 39, 0.72);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 1;
+      transition: opacity 0.3s ease;
+    }
+    .levelup-overlay.fade-out {
+      opacity: 0;
+    }
+    .levelup-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .levelup-card {
+      position: relative;
+      z-index: 2;
+      background: linear-gradient(180deg, #fffbeb 0%, #ffffff 60%);
+      border: 3px solid #f59e0b;
+      border-radius: 26px;
+      padding: 26px 24px 22px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 36px rgba(245, 158, 11, 0.55);
+      animation: levelUpPop 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .levelup-title {
+      font-size: 26px;
+      font-weight: 900;
+      color: #d97706;
+      margin: 0 0 12px;
+      text-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+    }
+    .levelup-avatar-wrap {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: levelUpFloat 1.6s ease-in-out infinite;
+    }
+    .levelup-avatar-inner {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #f3f4f6;
+    }
+    .levelup-lvl-text {
+      display: inline-block;
+      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      color: #fff;
+      font-size: 20px;
+      font-weight: 900;
+      padding: 4px 18px;
+      border-radius: 999px;
+      margin-bottom: 6px;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+    .levelup-sub {
+      font-size: 14px;
+      font-weight: 700;
+      color: #4b5563;
+      margin: 0 0 16px;
+    }
+    @keyframes levelUpPop {
+      0% { transform: scale(0.45); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @keyframes levelUpFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+    /* 切換寶貝中央大頭像提示動畫 */
+    .kid-switch-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 260;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kid-switch-popup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      will-change: transform, opacity;
+      animation: kidSwitchPopFade 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .kid-switch-avatar-wrap {
+      position: relative;
+      width: 184px;
+      height: 184px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.28));
+    }
+    .kid-switch-avatar-inner {
+      width: 126px;
+      height: 126px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: #f3f4f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .kid-switch-avatar-inner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .kid-switch-name {
+      margin-top: 10px;
+      background: rgba(17, 24, 39, 0.85);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 5px 18px;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+    }
+    @keyframes kidSwitchPopFade {
+      0% { opacity: 0; transform: scale(0.5); }
+      22% { opacity: 1; transform: scale(1.06); }
+      34% { opacity: 1; transform: scale(1); }
+      72% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.12); }
+    }
     
   </style>
 </head>
@@ -1155,7 +1489,7 @@
     <section id="page-main" class="hidden" style="display:flex; flex-direction:column; flex:1;">
       <header class="main-header">
         <div class="header-left">
-          <div class="header-avatar" id="header-kid-avatar" title="點擊切換寶貝，長按更換頭貼"></div>
+          <div class="header-avatar" id="header-kid-avatar" title="連點兩下切換寶貝，長按更換頭貼"></div>
           <div class="header-kid-info">
             <div class="header-name-row">
               <span class="header-kid-name" id="header-kid-name">寶貝</span>
@@ -1229,6 +1563,7 @@
 
       <!-- 頁籤 3：兌換紀錄 -->
       <div id="tab-history" class="tab-content hidden">
+        <div id="reward-goals-section" class="reward-goals-section"></div>
         <div id="redemption-list"></div>
       </div>
     </section>
@@ -1263,13 +1598,26 @@
 
   <!-- 頭像更換隱藏上傳控制項 -->
   <input type="file" id="kid-avatar-reupload-input" accept="image/*" class="hidden" />
-
+  <!-- GIF 製作外掛程式視窗容器 -->
+  <div id="gif-maker-overlay" class="gif-maker-overlay hidden">
+    <div class="gif-maker-modal">
+      <iframe id="gif-maker-iframe" class="gif-maker-iframe" title="製作 GIF 動圖"></iframe>
+    </div>
+  </div>
+  
   <div id="toast" class="toast"></div>
   <!-- 關主進場歡迎動畫層 -->
   <div id="guardian-welcome-overlay" class="guardian-welcome-overlay hidden">
     <div id="welcome-greeting" class="welcome-greeting"></div>
     <div id="welcome-avatar" class="welcome-avatar-fly"></div>
   </div>
+  <!-- 等級提升慶祝特效層 -->
+  <div id="levelup-overlay" class="levelup-overlay hidden">
+    <canvas id="levelup-canvas" class="levelup-canvas"></canvas>
+    <div class="levelup-card" id="levelup-card"></div>
+  </div>
+  <!-- 切換寶貝中央大頭像提示層 -->
+  <div id="kid-switch-overlay" class="kid-switch-overlay hidden"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
@@ -1310,7 +1658,7 @@
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
+      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, rewards: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
       currentGuardianId: "dad",
       currentKidId: null,
       currentPage: "guardian",
@@ -1783,6 +2131,7 @@
               updates[`${ROOT_PATH}/kids/${id}`] = null;
             }
             updates[`${ROOT_PATH}/archivedStats/${id}`] = null;
+            updates[`${ROOT_PATH}/rewards/${id}`] = null;
           });
 
           // 清除該寶貝的所有圖章（包含一般圖章、處罰圖章、已兌換圖章）
@@ -1825,8 +2174,16 @@
             }
           });
         } else if (state.editMode === "task") {
+          const deleteTaskSet = new Set(ids);
           ids.forEach((id) => {
             updates[`${ROOT_PATH}/tasks/${id}`] = null;
+          });
+          // 一併刪除該任務在目前檢視日期尚未兌換的圖章（保留過去日期的歷史紀錄與已兌換圖章）
+          Object.values(state.dbData.stamps || {}).forEach((s) => {
+            if (s && deleteTaskSet.has(s.taskId) && s.date === state.viewDate && !s.redeemedId) {
+              updates[`${ROOT_PATH}/stamps/${s.id}`] = null;
+              state.selectedStampIds.delete(s.id);
+            }
           });
         }
 
@@ -2382,7 +2739,67 @@
         reader.readAsDataURL(file);
       });
     }
+    // === 寶貝頭像 GIF 偵測、大小限制與外掛視窗呼叫 ===
+    const MAX_AVATAR_GIF_BYTES = 2 * 1024 * 1024; // 寶貝頭像 GIF 檔案上限 2MB
 
+    function isGifFile(file) {
+      return Boolean(file && (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif")));
+    }
+
+    function readAvatarGifFile(file) {
+      return new Promise((resolve, reject) => {
+        if (file.size > MAX_AVATAR_GIF_BYTES) {
+          reject(new Error("GIF 頭像檔案請小於 2MB"));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = () => reject(new Error("GIF 讀取失敗，請重試"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    let gifMakerCallback = null;
+
+    function openGifMakerModal(onComplete) {
+      gifMakerCallback = onComplete;
+      const overlay = document.getElementById("gif-maker-overlay");
+      const iframe = document.getElementById("gif-maker-iframe");
+      const g = getGuardianForDisplay(state.currentGuardianId);
+      const basePath = window.location.pathname.endsWith("/") || window.location.pathname.endsWith(".html")
+        ? window.location.href
+        : `${window.location.origin}${window.location.pathname}/`;
+      const gifUrl = new URL("gif-maker.html", basePath);
+      gifUrl.searchParams.set("theme", g.color || "#3b82f6");
+      gifUrl.searchParams.set("t", String(Date.now()));
+      iframe.src = gifUrl.toString();
+      overlay.classList.remove("hidden");
+    }
+
+    function closeGifMakerModal() {
+      const overlay = document.getElementById("gif-maker-overlay");
+      const iframe = document.getElementById("gif-maker-iframe");
+      overlay.classList.add("hidden");
+      iframe.src = "about:blank";
+      gifMakerCallback = null;
+    }
+
+    document.getElementById("gif-maker-overlay").onclick = (e) => {
+      if (e.target.id === "gif-maker-overlay") closeGifMakerModal();
+    };
+
+    window.addEventListener("message", (e) => {
+      const data = e.data;
+      if (!data || typeof data !== "object") return;
+      if (data.type === "GIF_MAKER_CLOSE") {
+        closeGifMakerModal();
+      } else if (data.type === "GIF_MAKER_RESULT" && typeof data.dataUrl === "string") {
+        const cb = gifMakerCallback;
+        closeGifMakerModal();
+        if (typeof cb === "function") cb(data.dataUrl);
+      }
+    });
+    
     // === 外框圖片處理（GIF 直接保留動圖，其餘格式壓縮為透明 WebP）===
     function compressFrameImageFile(file) {
       return new Promise((resolve, reject) => {
@@ -2622,12 +3039,15 @@
         <p style="text-align:center; color:#4b5563; line-height:1.6; margin:0 0 8px;">
           是否要為「<strong>${kid.name}</strong>」上傳新的頭像照片？
         </p>
-        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0;">
-          上傳新照片後，舊的照片紀錄會自動覆蓋刪除。
+        <p style="text-align:center; font-size:13px; color:#6b7280; margin:0 0 14px;">
+          支援靜態照片或 GIF 動圖（GIF 限 2MB 內），上傳後舊照片將自動覆蓋。
         </p>
-        <div class="modal-actions">
+        <button class="btn btn-block" id="m-make-gif" style="background:#fef3c7; color:#b45309; border:1.5px solid #f59e0b; margin-bottom:10px;">
+          🎬 製作 GIF 動圖
+        </button>
+        <div class="modal-actions" style="margin-top:0;">
           <button class="btn btn-secondary" id="m-cancel">取消</button>
-          <button class="btn btn-primary" id="m-confirm">確認</button>
+          <button class="btn btn-primary" id="m-confirm">上傳照片</button>
         </div>`);
 
       document.getElementById("m-cancel").onclick = closeModal;
@@ -2637,19 +3057,40 @@
         input.value = "";
         input.click();
       };
+      document.getElementById("m-make-gif").onclick = () => {
+        closeModal();
+        openGifMakerModal(async (gifBase64) => {
+          try {
+            await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), gifBase64);
+            showToast("GIF 動圖頭貼更新成功！");
+          } catch (err) {
+            showToast("GIF 頭貼上傳失敗，請重試");
+          }
+        });
+      };
     }
 
 
-    // 選擇頭像照片後，開啟縮放與移動剪裁視窗
-    document.getElementById("kid-avatar-reupload-input").onchange = (e) => {
+    // 選擇頭像照片後：自動偵測 GIF 走動圖直傳，靜態圖走原剪裁流程
+    document.getElementById("kid-avatar-reupload-input").onchange = async (e) => {
       if (!state.currentKidId) return;
       const file = e.target.files[0];
       if (!file) return;
+      if (isGifFile(file)) {
+        try {
+          const gifBase64 = await readAvatarGifFile(file);
+          await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), gifBase64);
+          showToast("GIF 動圖頭貼更換成功！");
+        } catch (err) {
+          showToast(err?.message || "GIF 頭貼更換失敗，請重試");
+        }
+        return;
+      }
       openAvatarCropModal(file);
     };
 
     // === 頭像圓形縮放移動剪裁視窗 ===
-    function openAvatarCropModal(file) {
+    function openAvatarCropModal(file, options = {}) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const img = new Image();
@@ -2677,7 +3118,7 @@
             </div>
             <div class="modal-actions">
               <button class="btn btn-secondary" id="avatar-crop-cancel">取消</button>
-              <button class="btn btn-primary" id="avatar-crop-save">確認上傳</button>
+              <button class="btn btn-primary" id="avatar-crop-save">${options.confirmText || "確認上傳"}</button>
             </div>`);
 
           const canvas = document.getElementById("avatar-crop-canvas");
@@ -2789,7 +3230,10 @@
             pinchStartDist = 0;
           });
 
-          document.getElementById("avatar-crop-cancel").onclick = closeModal;
+          document.getElementById("avatar-crop-cancel").onclick = () => {
+            if (typeof options.onCancel === "function") options.onCancel();
+            else closeModal();
+          };
           document.getElementById("avatar-crop-save").onclick = async () => {
             try {
               const outCanvas = document.createElement("canvas");
@@ -2805,13 +3249,18 @@
               outCtx.drawImage(img, dx, dy, drawW, drawH);
 
               const base64Img = outCanvas.toDataURL("image/webp", 0.75);
-              await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), base64Img);
-              closeModal();
-              showToast("頭貼更換成功！");
+              if (typeof options.onConfirm === "function") {
+                options.onConfirm(base64Img);
+              } else {
+                await set(ref(db, `${ROOT_PATH}/kids/${state.currentKidId}/avatar`), base64Img);
+                closeModal();
+                showToast("頭貼更換成功！");
+              }
             } catch (err) {
               showToast("頭貼更換失敗，請重試");
             }
           };
+;
         };
         img.src = ev.target.result;
       };
@@ -2861,10 +3310,11 @@
           return (a.task.id || "").localeCompare(b.task.id || "");
         });
 
+      const visibleTaskIds = new Set(tasks.map((item) => item.task.id));
       const stamps = Object.values(state.dbData.stamps || {});
       const archivedDailyCount = Number(state.dbData.archivedStats?.[state.currentKidId]?.daily?.[state.viewDate]) || 0;
       const dayStampCount = stamps.filter(
-        (s) => s.kidId === state.currentKidId && s.date === state.viewDate
+        (s) => s.kidId === state.currentKidId && s.date === state.viewDate && visibleTaskIds.has(s.taskId)
       ).length + archivedDailyCount;
       document.getElementById("daily-stamp-count").textContent = dayStampCount;
 
@@ -3034,6 +3484,7 @@
           showToast("請先到設定選擇或上傳自訂圖章");
           return;
         }
+        const beforeStats = getKidLevelAndTotal(state.currentKidId);
         const stampId = `${state.currentKidId}_${task.id}_${state.viewDate}_${slotIndex}`;
         const newStamp = {
           id: stampId,
@@ -3048,6 +3499,14 @@
           redeemedId: null
         };
         set(ref(db, `${ROOT_PATH}/stamps/${stampId}`), newStamp);
+
+        // 僅在蓋章使等級提升時播放慶祝特效（處罰扣章降級不觸發）
+        const customLevels = Object.keys(state.dbData.customFrames || {}).map(Number).filter((n) => !isNaN(n));
+        const maxLevel = Math.max(20, ...customLevels);
+        const nextLvl = Math.max(1, Math.min(maxLevel, Math.floor((beforeStats.total + 1) / beforeStats.threshold) + 1));
+        if (nextLvl > beforeStats.lvl) {
+          playLevelUpEffect(state.currentKidId, nextLvl);
+        }
 
         showToast("蓋章成功！");
       } else {
@@ -3176,6 +3635,7 @@
     }
 
     function renderRedemptionHistory() {
+      renderRewardGoals();
       const listEl = document.getElementById("redemption-list");
       const records = Object.values(state.dbData.redemptions || {})
         .filter((r) => r.kidId === state.currentKidId)
@@ -3217,6 +3677,454 @@
         }
         listEl.appendChild(row);
       });
+    }
+    // === 大獎勵與三個常用獎勵 ===
+    function getKidAvailableStampCount(kidId) {
+      return Object.values(state.dbData.stamps || {})
+        .filter((s) => s.kidId === kidId && !s.redeemedId && !s.punishedDate)
+        .length;
+    }
+
+    function compressRewardImageFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const size = 320;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d");
+            const minSide = Math.min(img.width, img.height);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+            resolve(canvas.toDataURL("image/webp", 0.78));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderRewardGoals() {
+      const container = document.getElementById("reward-goals-section");
+      if (!container || !state.currentKidId) return;
+
+      const available = getKidAvailableStampCount(state.currentKidId);
+      const kidRewards = (state.dbData.rewards && state.dbData.rewards[state.currentKidId]) || {};
+      const big = kidRewards.big || null;
+      const hasBig = Boolean(big && big.name && Number(big.target) > 0);
+      const quickMap = kidRewards.quick || {};
+
+      let bigBodyHTML = "";
+      if (hasBig) {
+        const target = Math.max(1, Number(big.target));
+        const pct = Math.min(100, Math.round((available / target) * 100));
+        const remain = Math.max(0, target - available);
+        const isDone = remain === 0;
+        bigBodyHTML = `
+          <div class="big-reward-body">
+            <div class="big-reward-img-box ${big.image ? "has-img" : ""}">
+              ${big.image ? `<img src="${big.image}" alt="${escapeHTML(big.name)}" />` : "尚未上傳<br/>圖片"}
+            </div>
+            <div class="big-reward-info">
+              <div class="big-reward-name">${escapeHTML(big.name)}</div>
+              <div class="big-reward-progress-track">
+                <div class="big-reward-progress-fill ${isDone ? "done" : ""}" style="width:${pct}%;"></div>
+              </div>
+              <div class="big-reward-progress-text">
+                <span>${available} / ${target} 章 (${pct}%)</span>
+                <span class="big-reward-remain ${isDone ? "done" : ""}">
+                  ${isDone ? "🎉 已達標！" : `還差 ${remain} 章`}
+                </span>
+              </div>
+            </div>
+          </div>`;
+      } else {
+        bigBodyHTML = `
+          <div class="big-reward-body">
+            <div class="big-reward-img-box">＋<br/>照片</div>
+            <div class="big-reward-info">
+              <div class="big-reward-name" style="color:#6b7280;">尚未設定大獎勵</div>
+              <div class="big-reward-progress-track">
+                <div class="big-reward-progress-fill" style="width:0%;"></div>
+              </div>
+              <div class="big-reward-progress-text">
+                <span>點擊設定目標與照片</span>
+                <span>目前 ${available} 章</span>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      let quickCardsHTML = "";
+      for (let i = 0; i < 3; i++) {
+        const q = quickMap[i];
+        if (q && q.name && Number(q.target) > 0) {
+          const target = Math.max(1, Number(q.target));
+          const isReady = available >= target;
+          quickCardsHTML += `
+            <div class="quick-reward-card ${isReady ? "ready" : ""}" data-quick-slot="${i}">
+              <div class="quick-reward-name">${escapeHTML(q.name)}</div>
+              <div class="quick-reward-cost">${target} 章${isReady ? " ✓" : ""}</div>
+            </div>`;
+        } else {
+          quickCardsHTML += `
+            <div class="quick-reward-card empty" data-quick-slot="${i}">
+              <div style="font-size:18px; font-weight:800; line-height:1.1;">＋</div>
+              <div style="font-size:11px; margin-top:4px;">常用獎勵</div>
+            </div>`;
+        }
+      }
+
+      container.innerHTML = `
+        <div class="big-reward-card" id="btn-edit-big-reward">
+          <div class="big-reward-header">
+            <span class="big-reward-badge">🏆 大獎勵</span>
+            <span class="big-reward-edit-hint">${hasBig ? "點擊兌換 · 長按編輯" : "點擊設定"}</span>
+          </div>
+          ${bigBodyHTML}
+        </div>
+        <div class="quick-rewards-row">
+          ${quickCardsHTML}
+        </div>`;
+
+      const bigCardEl = document.getElementById("btn-edit-big-reward");
+      if (hasBig) {
+        attachLongPress(bigCardEl, () => openBigRewardModal());
+        bigCardEl.onclick = () => {
+          if (state.ignoreNextClick) return;
+          openRewardRedeemConfirmModal({
+            name: big.name,
+            target: Math.max(1, Number(big.target)),
+            isBigReward: true
+          });
+        };
+      } else {
+        bigCardEl.onclick = () => {
+          if (state.ignoreNextClick) return;
+          openBigRewardModal();
+        };
+      }
+
+      container.querySelectorAll(".quick-reward-card").forEach((card) => {
+        const slotIdx = Number(card.dataset.quickSlot);
+        const q = quickMap[slotIdx];
+        const hasQuick = Boolean(q && q.name && Number(q.target) > 0);
+        if (hasQuick) {
+          attachLongPress(card, () => openQuickRewardModal(slotIdx));
+          card.onclick = () => {
+            if (state.ignoreNextClick) return;
+            openRewardRedeemConfirmModal({
+              name: q.name,
+              target: Math.max(1, Number(q.target)),
+              isBigReward: false
+            });
+          };
+        } else {
+          card.onclick = () => {
+            if (state.ignoreNextClick) return;
+            openQuickRewardModal(slotIdx);
+          };
+        }
+      });
+    }
+
+    function openRewardRedeemConfirmModal({ name, target, isBigReward }) {
+      const available = getKidAvailableStampCount(state.currentKidId);
+      const isEnough = available >= target;
+      const lack = Math.max(0, target - available);
+
+      openModal(`
+        <h3 class="modal-title">${isBigReward ? "🏆 兌換大獎勵" : "確認兌換獎勵"}</h3>
+        <p style="text-align:center; font-size:16px; color:#1f2937; line-height:1.6; margin:0 0 10px;">
+          是否確認使用 <strong style="color:var(--theme-color); font-size:20px;">${target}</strong> 章兌換<br/>
+          「<strong>${escapeHTML(name)}</strong>」？
+        </p>
+        ${isEnough
+          ? `<p style="text-align:center; font-size:13px; color:#6b7280; margin:0;">
+               將從集點銀行最新的圖章開始扣除（7 天內可從兌換紀錄退回）${isBigReward ? "；兌換後大獎勵將重設為初始狀態" : ""}。
+             </p>`
+          : `<p style="text-align:center; font-size:13px; color:#ef4444; font-weight:700; margin:0;">
+               目前可兌換圖章僅有 ${available} 章，還差 ${lack} 章才能兌換喔！
+             </p>`}
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm-reward-redeem" ${isEnough ? "" : "disabled"}>確認兌換</button>
+        </div>`);
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-reward-redeem").onclick = () => {
+        const availableStamps = Object.values(state.dbData.stamps || {})
+          .filter((s) => s.kidId === state.currentKidId && !s.redeemedId && !s.punishedDate)
+          .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        if (availableStamps.length < target) {
+          showToast("可兌換圖章數量不足");
+          closeModal();
+          return;
+        }
+
+        const stampIds = availableStamps.slice(0, target).map((s) => s.id);
+        const redId = uid("red");
+        const today = getTodayStr();
+        const expireDate = addDays(today, 7);
+        const updates = {};
+
+        updates[`${ROOT_PATH}/redemptions/${redId}`] = {
+          id: redId,
+          kidId: state.currentKidId,
+          itemName: name,
+          count: stampIds.length,
+          stampIds,
+          date: today,
+          timestamp: Date.now(),
+          guardianId: state.currentGuardianId
+        };
+
+        stampIds.forEach((sid) => {
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemedId`] = redId;
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemedDate`] = today;
+          updates[`${ROOT_PATH}/stamps/${sid}/redeemExpireDate`] = expireDate;
+          state.selectedStampIds.delete(sid);
+        });
+
+        if (isBigReward) {
+          updates[`${ROOT_PATH}/rewards/${state.currentKidId}/big`] = null;
+        }
+
+        update(ref(db), updates);
+        closeModal();
+        showToast(isBigReward ? "🎉 大獎勵兌換成功！" : `已兌換「${name}」！`);
+      };
+    }
+
+    function openBigRewardModal() {
+      const kidRewards = (state.dbData.rewards && state.dbData.rewards[state.currentKidId]) || {};
+      const big = kidRewards.big || {};
+      let uploadedImg = big.image || "";
+
+      openModal(`
+        <h3 class="modal-title">設定大獎勵</h3>
+        <div class="form-group">
+          <label class="form-label">獎勵名稱</label>
+          <input type="text" id="big-reward-name-input" class="form-input" placeholder="例如：買樂高組、去遊樂園" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">需要多少圖章可兌換</label>
+          <input type="number" id="big-reward-target-input" class="form-input" min="1" placeholder="例如：50" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">獎勵照片（選填）</label>
+          <input type="file" id="big-reward-img-input" accept="image/*" class="form-input" />
+          <div id="big-reward-img-preview" style="margin-top:10px; text-align:center;">
+            ${uploadedImg ? `<img src="${uploadedImg}" style="width:110px;height:110px;border-radius:14px;object-fit:cover;box-shadow:var(--shadow);" />` : ""}
+          </div>
+        </div>
+        <div class="modal-actions">
+          ${big.name ? `<button class="btn btn-danger" id="m-clear-big">刪除</button>` : ""}
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-save-big">儲存</button>
+        </div>`);
+
+      const nameInput = document.getElementById("big-reward-name-input");
+      const targetInput = document.getElementById("big-reward-target-input");
+      nameInput.value = big.name || "";
+      targetInput.value = big.target || "";
+
+      document.getElementById("big-reward-img-input").onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+          uploadedImg = await compressRewardImageFile(file);
+          document.getElementById("big-reward-img-preview").innerHTML =
+            `<img src="${uploadedImg}" style="width:110px;height:110px;border-radius:14px;object-fit:cover;box-shadow:var(--shadow);" />`;
+        } catch (err) {
+          showToast("圖片讀取失敗，請重試");
+        }
+      };
+
+      const clearBtn = document.getElementById("m-clear-big");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          remove(ref(db, `${ROOT_PATH}/rewards/${state.currentKidId}/big`));
+          closeModal();
+          showToast("已清除大獎勵");
+        };
+      }
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-save-big").onclick = () => {
+        const name = nameInput.value.trim();
+        const target = Math.floor(Number(targetInput.value));
+        if (!name) return showToast("請輸入獎勵名稱");
+        if (!target || target < 1) return showToast("請輸入正確的圖章數量");
+        set(ref(db, `${ROOT_PATH}/rewards/${state.currentKidId}/big`), {
+          name,
+          target,
+          image: uploadedImg || ""
+        });
+        closeModal();
+        showToast("已儲存大獎勵！");
+      };
+    }
+
+    function openQuickRewardModal(slotIdx) {
+      const kidRewards = (state.dbData.rewards && state.dbData.rewards[state.currentKidId]) || {};
+      const q = (kidRewards.quick && kidRewards.quick[slotIdx]) || {};
+
+      openModal(`
+        <h3 class="modal-title">設定常用獎勵 #${slotIdx + 1}</h3>
+        <div class="form-group">
+          <label class="form-label">獎勵名稱</label>
+          <input type="text" id="quick-reward-name-input" class="form-input" placeholder="例如：看卡通30分鐘、吃冰淇淋" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">所需圖章數</label>
+          <input type="number" id="quick-reward-target-input" class="form-input" min="1" placeholder="例如：5" />
+        </div>
+        <div class="modal-actions">
+          ${q.name ? `<button class="btn btn-danger" id="m-clear-quick">刪除</button>` : ""}
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-save-quick">儲存</button>
+        </div>`);
+
+      const nameInput = document.getElementById("quick-reward-name-input");
+      const targetInput = document.getElementById("quick-reward-target-input");
+      nameInput.value = q.name || "";
+      targetInput.value = q.target || "";
+
+      const clearBtn = document.getElementById("m-clear-quick");
+      if (clearBtn) {
+        clearBtn.onclick = () => {
+          remove(ref(db, `${ROOT_PATH}/rewards/${state.currentKidId}/quick/${slotIdx}`));
+          closeModal();
+          showToast("已清除常用獎勵");
+        };
+      }
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-save-quick").onclick = () => {
+        const name = nameInput.value.trim();
+        const target = Math.floor(Number(targetInput.value));
+        if (!name) return showToast("請輸入獎勵名稱");
+        if (!target || target < 1) return showToast("請輸入正確的圖章數量");
+        set(ref(db, `${ROOT_PATH}/rewards/${state.currentKidId}/quick/${slotIdx}`), {
+          name,
+          target
+        });
+        closeModal();
+        showToast("已儲存常用獎勵！");
+      };
+    }
+
+    // === 等級提升全螢幕慶祝特效（Canvas 彩帶撒花 + 升級卡片）===
+    let levelUpAnimId = null;
+    let levelUpAutoTimer = null;
+
+    function playLevelUpEffect(kidId, newLvl) {
+      const kid = getActiveKids()[kidId];
+      if (!kid) return;
+
+      const overlay = document.getElementById("levelup-overlay");
+      const canvas = document.getElementById("levelup-canvas");
+      const card = document.getElementById("levelup-card");
+      if (!overlay || !canvas || !card) return;
+
+      if (levelUpAnimId) cancelAnimationFrame(levelUpAnimId);
+      clearTimeout(levelUpAutoTimer);
+
+      const customFrames = state.dbData.customFrames || {};
+      const frameTitle = newLvl > 20
+        ? (customFrames[newLvl]?.name || "自訂外框")
+        : (FRAME_LEVEL_NAMES[newLvl - 1] || `等級 ${newLvl}`);
+
+      card.innerHTML = `
+        <h2 class="levelup-title">🎉 恭喜升級！</h2>
+        <div class="levelup-avatar-wrap">
+          <div class="levelup-avatar-inner">${renderKidAvatarHTML(kid)}</div>
+          <div class="avatar-frame">${getFrameSVG(newLvl)}</div>
+        </div>
+        <div class="levelup-lvl-text">LVL ${newLvl}</div>
+        <p class="levelup-sub">${escapeHTML(kid.name)} 解鎖了「${escapeHTML(frameTitle)}」！</p>
+        <button class="btn btn-primary btn-block" id="btn-close-levelup">太棒了！</button>`;
+
+      overlay.classList.remove("hidden", "fade-out");
+      if (navigator.vibrate) navigator.vibrate([40, 40, 80]);
+
+      // 彩帶撒花 Canvas 動畫
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const colors = ["#f59e0b", "#ef4444", "#3b82f6", "#10b981", "#ec4899", "#a855f7", "#fde047"];
+      const particles = Array.from({ length: 90 }, () => ({
+        x: W / 2 + (Math.random() - 0.5) * 120,
+        y: H * 0.45 + (Math.random() - 0.5) * 80,
+        vx: (Math.random() - 0.5) * 13,
+        vy: -Math.random() * 13 - 4,
+        size: Math.random() * 7 + 5,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rot: Math.random() * Math.PI * 2,
+        vRot: (Math.random() - 0.5) * 0.25,
+        gravity: 0.28 + Math.random() * 0.12,
+        shape: Math.random() > 0.35 ? "rect" : "circle"
+      }));
+
+      const animate = () => {
+        ctx.clearRect(0, 0, W, H);
+        let alive = false;
+        for (const p of particles) {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += p.gravity;
+          p.vx *= 0.99;
+          p.rot += p.vRot;
+          if (p.y < H + 30) alive = true;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.color;
+          if (p.shape === "rect") {
+            ctx.fillRect(-p.size / 2, -p.size * 0.3, p.size, p.size * 0.6);
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        if (alive) {
+          levelUpAnimId = requestAnimationFrame(animate);
+        }
+      };
+      levelUpAnimId = requestAnimationFrame(animate);
+
+      const closeLevelUp = () => {
+        clearTimeout(levelUpAutoTimer);
+        overlay.classList.add("fade-out");
+        setTimeout(() => {
+          if (levelUpAnimId) {
+            cancelAnimationFrame(levelUpAnimId);
+            levelUpAnimId = null;
+          }
+          overlay.classList.add("hidden");
+          overlay.classList.remove("fade-out");
+        }, 280);
+      };
+
+      document.getElementById("btn-close-levelup").onclick = closeLevelUp;
+      overlay.onclick = (e) => {
+        if (e.target === overlay) closeLevelUp();
+      };
+      levelUpAutoTimer = setTimeout(closeLevelUp, 4500);
     }
 
     function cancelRedemption(rec) {
@@ -3565,8 +4473,8 @@
     }
 
     // 新增寶貝 Modal
-    function openAddKidModal() {
-      let uploadedBase64 = "";
+    function openAddKidModal(draft = {}) {
+      let uploadedBase64 = draft.avatar || "";
       openModal(`
         <h3 class="modal-title">新增寶貝資料</h3>
         <div class="form-group">
@@ -3578,26 +4486,69 @@
           <input type="date" id="kid-birth-input" class="form-input" />
         </div>
         <div class="form-group">
-          <label class="form-label">頭像照片上傳</label>
+          <label class="form-label">頭像照片上傳（支援 GIF 動圖，限 2MB 內）</label>
           <input type="file" id="kid-photo-input" accept="image/*" class="form-input" />
-          <div id="kid-photo-preview" style="margin-top:8px; text-align:center;"></div>
+          <button type="button" class="btn btn-block" id="btn-add-kid-make-gif" style="margin-top:8px; padding:9px 14px; font-size:14px; background:#fef3c7; color:#b45309; border:1.5px solid #f59e0b;">
+            🎬 製作 GIF 動圖
+          </button>
+          <div id="kid-photo-preview" style="margin-top:8px; text-align:center;">
+            ${uploadedBase64 ? `<img src="${uploadedBase64}" style="width:84px;height:84px;border-radius:50%;object-fit:cover;box-shadow:var(--shadow);" />` : ""}
+          </div>
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-cancel">取消</button>
           <button class="btn btn-primary" id="m-save">儲存</button>
         </div>`);
 
+      const nameInput = document.getElementById("kid-name-input");
+      const birthInput = document.getElementById("kid-birth-input");
+      nameInput.value = draft.name || "";
+      birthInput.value = draft.birthday || "";
+
       document.getElementById("kid-photo-input").onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        uploadedBase64 = await compressImageFile(file);
-        document.getElementById("kid-photo-preview").innerHTML =
-          `<img src="${uploadedBase64}" style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />`;
+        const currentDraft = {
+          name: nameInput.value,
+          birthday: birthInput.value,
+          avatar: uploadedBase64
+        };
+        if (isGifFile(file)) {
+          try {
+            const gifBase64 = await readAvatarGifFile(file);
+            openAddKidModal({ ...currentDraft, avatar: gifBase64 });
+            showToast("已套用 GIF 動圖頭像");
+          } catch (err) {
+            showToast(err?.message || "GIF 讀取失敗，請重試");
+          }
+          return;
+        }
+        openAvatarCropModal(file, {
+          confirmText: "套用頭像",
+          onCancel: () => openAddKidModal(currentDraft),
+          onConfirm: (croppedBase64) => {
+            openAddKidModal({ ...currentDraft, avatar: croppedBase64 });
+            showToast("已套用裁切頭像");
+          }
+        });
       };
+
+      document.getElementById("btn-add-kid-make-gif").onclick = () => {
+        const currentDraft = {
+          name: nameInput.value,
+          birthday: birthInput.value,
+          avatar: uploadedBase64
+        };
+        openGifMakerModal((gifBase64) => {
+          openAddKidModal({ ...currentDraft, avatar: gifBase64 });
+          showToast("已套用 GIF 動圖頭像");
+        });
+      };
+
       document.getElementById("m-cancel").onclick = closeModal;
       document.getElementById("m-save").onclick = () => {
-        const name = document.getElementById("kid-name-input").value.trim();
-        const birthday = document.getElementById("kid-birth-input").value;
+        const name = nameInput.value.trim();
+        const birthday = birthInput.value;
         if (!name) return showToast("請輸入寶貝姓名");
         const id = uid("kid");
         set(ref(db, `${ROOT_PATH}/kids/${id}`), {
@@ -3607,6 +4558,7 @@
         showToast(`已新增寶貝：${name}`);
       };
     }
+
 
     // 齒輪設定 Modal
     function openSettingsModal() {
@@ -4246,24 +5198,60 @@
     }
 
     // === 事件綁定 ===
-    // 左上角寶貝頭像：只綁定一次（長按彈出更換頭貼確認視窗，點擊依序快速切換寶貝）
+    // 左上角寶貝頭像：只綁定一次（長按彈出更換頭貼確認視窗，快速連點兩下依序切換寶貝）
+    let kidSwitchTimer = null;
+    function playKidSwitchEffect(kidId) {
+      const kid = getActiveKids()[kidId];
+      const overlay = document.getElementById("kid-switch-overlay");
+      if (!kid || !overlay) return;
+
+      const { lvl } = getKidLevelAndTotal(kidId);
+      clearTimeout(kidSwitchTimer);
+
+      overlay.innerHTML = `
+        <div class="kid-switch-popup">
+          <div class="kid-switch-avatar-wrap">
+            <div class="kid-switch-avatar-inner">${renderKidAvatarHTML(kid)}</div>
+            <div class="avatar-frame">${getFrameSVG(lvl)}</div>
+          </div>
+          <div class="kid-switch-name">${escapeHTML(kid.name)}</div>
+        </div>`;
+
+      overlay.classList.remove("hidden");
+      kidSwitchTimer = setTimeout(() => {
+        overlay.classList.add("hidden");
+        overlay.innerHTML = "";
+      }, 1020);
+    }
+
     const headerKidAvatarEl = document.getElementById("header-kid-avatar");
+    let lastHeaderAvatarTap = 0;
     attachLongPress(headerKidAvatarEl, () => {
+      lastHeaderAvatarTap = 0;
       openConfirmChangeAvatarModal();
     });
     headerKidAvatarEl.onclick = () => {
       if (state.ignoreNextClick) return;
       const kids = Object.values(getActiveKids());
       if (kids.length <= 1) return;
-      const currentIndex = kids.findIndex((k) => k.id === state.currentKidId);
-      const nextKid = kids[(currentIndex + 1) % kids.length];
-      exitEditMode();
-      state.currentKidId = nextKid.id;
-      state.selectedStampIds.clear();
-      updateRedeemBar();
-      renderAll();
-      showToast(`已切換寶貝：${nextKid.name}`);
+
+      const now = Date.now();
+      if (now - lastHeaderAvatarTap < 420) {
+        lastHeaderAvatarTap = 0;
+        const currentIndex = kids.findIndex((k) => k.id === state.currentKidId);
+        const nextKid = kids[(currentIndex + 1) % kids.length];
+        exitEditMode();
+        state.currentKidId = nextKid.id;
+        state.selectedStampIds.clear();
+        updateRedeemBar();
+        renderAll();
+        playKidSwitchEffect(nextKid.id);
+      } else {
+        lastHeaderAvatarTap = now;
+        showToast("再點一下切換寶貝");
+      }
     };
+
 
     let isPlayingWelcome = false;
     function playGuardianWelcomeAnimation({ fromCenter = false } = {}) {
@@ -4545,7 +5533,7 @@
 
     // 2. 分流監聽 Firebase 節點（先載輕量核心，再於背景載入大型外框與圖章）
     const loadedPaths = new Set();
-    const corePaths = ["guardians", "kids", "deletedDemoKids", "settings", "tasks", "stamps", "redemptions", "archivedStats"];
+    const corePaths = ["guardians", "kids", "deletedDemoKids", "settings", "tasks", "stamps", "redemptions", "rewards", "archivedStats"];
     const heavyPaths = ["customStamps", "customFrames"];
 
     function updateSyncStatus() {

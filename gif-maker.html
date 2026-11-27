@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>製作 GIF 動圖頭像</title>
+  <style>
+    :root {
+      --theme-color: #3b82f6;
+      --danger-color: #ef4444;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background: #ffffff;
+      color: var(--text-main);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 800;
+      margin: 0;
+    }
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--text-sub);
+      text-align: center;
+      margin: 0 0 14px;
+      line-height: 1.5;
+    }
+
+    /* 預覽區 */
+    .preview-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .preview-circle {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: #f3f4f6;
+      border: 3px solid var(--theme-color);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 12px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .preview-circle canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .preview-meta {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    /* 圖片格子區（置中排列，最多 5 格） */
+    .slots-grid {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 18px;
+      min-height: 86px;
+    }
+    .slot {
+      width: 78px;
+      height: 78px;
+      border-radius: 14px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      touch-action: manipulation;
+    }
+    .slot-add {
+      border: 2.5px dashed #9ca3af;
+      background: #f9fafb;
+      color: #4b5563;
+      cursor: pointer;
+      flex-direction: column;
+      gap: 2px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .slot-add:active {
+      background: #eff6ff;
+      border-color: var(--theme-color);
+    }
+    .slot-add-plus {
+      font-size: 26px;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .slot-add-text {
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .slot-filled {
+      border: 2px solid #e5e7eb;
+      background: #111827;
+      cursor: grab;
+      transition: transform 0.15s, opacity 0.15s;
+      touch-action: none;
+    }
+    .slot-filled.dragging-source {
+      opacity: 0.35;
+      border: 2px dashed var(--theme-color);
+    }
+    .slot-filled img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 12px;
+      pointer-events: none;
+      display: block;
+    }
+    .slot-order {
+      position: absolute;
+      left: 4px;
+      bottom: 4px;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, 0.78);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .slot-del-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      background: var(--danger-color);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 拖曳時的浮動縮圖 */
+    .drag-ghost {
+      position: fixed;
+      width: 82px;
+      height: 82px;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 3px solid var(--theme-color);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+      pointer-events: none;
+      z-index: 999;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+    .drag-ghost img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* 秒數設定區 */
+    .control-box {
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .control-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .duration-val {
+      color: var(--theme-color);
+      font-size: 16px;
+      font-weight: 900;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--theme-color);
+      cursor: pointer;
+    }
+    .interval-info {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 6px;
+      text-align: center;
+    }
+
+    /* 按鈕區 */
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-primary { background: var(--theme-color); color: #ffffff; }
+
+    .status-text {
+      text-align: center;
+      font-size: 12px;
+      color: var(--theme-color);
+      font-weight: 700;
+      min-height: 18px;
+      margin-top: 8px;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h3 class="title">🎬 製作 GIF 動圖頭像</h3>
+    <button type="button" class="close-btn" id="btn-close-top" title="關閉">×</button>
+  </div>
+
+  <p class="hint">
+    最多上傳 5 張照片（自動裁切縮放 ≤ 250×250）<br />
+    點右上角紅色 × 可刪除，長按圖片可拖曳調整播放順序
+  </p>
+
+  <div class="preview-wrap">
+    <div class="preview-circle" id="preview-circle">
+      <span id="preview-placeholder">尚未上傳<br />圖片</span>
+      <canvas id="preview-canvas" width="250" height="250" class="hidden"></canvas>
+    </div>
+    <div class="preview-meta" id="preview-meta">0 / 5 張</div>
+  </div>
+
+  <div class="slots-grid" id="slots-grid"></div>
+  <input type="file" id="file-input" accept="image/*" multiple class="hidden" />
+
+  <div class="control-box">
+    <div class="control-row">
+      <span>動圖總長度（最長 5 秒）</span>
+      <span class="duration-val"><span id="duration-display">2.5</span> 秒</span>
+    </div>
+    <input type="range" id="duration-slider" min="0.5" max="5" step="0.5" value="2.5" />
+    <div class="interval-info" id="interval-info">上傳圖片後將自動平均分配每張顯示時間</div>
+  </div>
+
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" id="btn-cancel">取消</button>
+    <button type="button" class="btn btn-primary" id="btn-confirm" disabled>確認上傳</button>
+  </div>
+  <div class="status-text" id="status-text"></div>
+
+  <script>
+    const MAX_IMAGES = 5;
+    const MAX_SIZE = 250;
+    const MAX_GIF_BYTES = 2 * 1024 * 1024; // 2MB 上限
+
+    // 讀取主程式傳入的主題色（若有）
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeColor = urlParams.get("theme");
+    if (themeColor && /^#[0-9a-fA-F]{3,8}$/.test(themeColor)) {
+      document.documentElement.style.setProperty("--theme-color", themeColor);
+    }
+
+    const state = {
+      images: [], // [{ id, thumbUrl, canvas, width, height }]
+      totalSeconds: 2.5,
+      previewTimer: null,
+      previewIndex: 0,
+      isEncoding: false
+    };
+
+    const slotsGrid = document.getElementById("slots-grid");
+    const fileInput = document.getElementById("file-input");
+    const durationSlider = document.getElementById("duration-slider");
+    const durationDisplay = document.getElementById("duration-display");
+    const intervalInfo = document.getElementById("interval-info");
+    const previewCanvas = document.getElementById("preview-canvas");
+    const previewCtx = previewCanvas.getContext("2d");
+    const previewPlaceholder = document.getElementById("preview-placeholder");
+    const previewMeta = document.getElementById("preview-meta");
+    const btnConfirm = document.getElementById("btn-confirm");
+    const statusText = document.getElementById("status-text");
+
+    // === 讀取並將圖片置中裁切縮放至不超過 250×250 ===
+    function loadAndResizeImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const minSide = Math.min(img.width, img.height);
+            const targetSize = Math.min(MAX_SIZE, minSide);
+            const sx = (img.width - minSide) / 2;
+            const sy = (img.height - minSide) / 2;
+
+            const canvas = document.createElement("canvas");
+            canvas.width = targetSize;
+            canvas.height = targetSize;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, targetSize, targetSize);
+
+            resolve({
+              id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+              thumbUrl: canvas.toDataURL("image/jpeg", 0.85),
+              canvas,
+              size: targetSize
+            });
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 計算統一輸出解析度（取目前所有圖片中的最大邊長，但絕不超過 250×250）
+    function getOutputSize() {
+      if (state.images.length === 0) return MAX_SIZE;
+      const maxExisting = Math.max(...state.images.map((item) => item.size));
+      return Math.min(MAX_SIZE, maxExisting);
+    }
+
+    // === 渲染格子與資訊 ===
+    function renderSlots() {
+      slotsGrid.innerHTML = "";
+
+      state.images.forEach((item, index) => {
+        const slot = document.createElement("div");
+        slot.className = "slot slot-filled";
+        slot.dataset.index = String(index);
+        slot.innerHTML = `
+          <img src="${item.thumbUrl}" alt="圖片 ${index + 1}" />
+          <span class="slot-order">${index + 1}</span>
+          <button type="button" class="slot-del-btn" title="刪除這張圖片">×</button>
+        `;
+
+        const delBtn = slot.querySelector(".slot-del-btn");
+        delBtn.addEventListener("pointerdown", (e) => e.stopPropagation());
+        delBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          state.images.splice(index, 1);
+          renderAll();
+        });
+
+        attachLongPressDrag(slot, index);
+        slotsGrid.appendChild(slot);
+      });
+
+      // 未滿 5 張時顯示新增格子；滿 5 張不再顯示；刪除後自動恢復顯示
+      if (state.images.length < MAX_IMAGES) {
+        const addSlot = document.createElement("div");
+        addSlot.className = "slot slot-add";
+        addSlot.innerHTML = `
+          <span class="slot-add-plus">＋</span>
+          <span class="slot-add-text">${state.images.length === 0 ? "上傳圖片" : "新增圖片"}</span>
+        `;
+        addSlot.onclick = () => {
+          fileInput.value = "";
+          fileInput.click();
+        };
+        slotsGrid.appendChild(addSlot);
+      }
+    }
+
+    function updateInfoAndPreview() {
+      const count = state.images.length;
+      const outSize = getOutputSize();
+      btnConfirm.disabled = count === 0 || state.isEncoding;
+      durationDisplay.textContent = state.totalSeconds.toFixed(1).replace(/\.0$/, "");
+
+      if (count === 0) {
+        previewMeta.textContent = `0 / ${MAX_IMAGES} 張`;
+        intervalInfo.textContent = "上傳圖片後將自動平均分配每張顯示時間";
+        previewCanvas.classList.add("hidden");
+        previewPlaceholder.classList.remove("hidden");
+        stopPreviewLoop();
+        return;
+      }
+
+      const perFrameSec = state.totalSeconds / count;
+      previewMeta.textContent = `${count} / ${MAX_IMAGES} 張 · 輸出 ${outSize}×${outSize}`;
+      intervalInfo.textContent = `共 ${count} 張，每張自動分配約 ${perFrameSec.toFixed(2)} 秒`;
+
+      previewPlaceholder.classList.add("hidden");
+      previewCanvas.classList.remove("hidden");
+      previewCanvas.width = outSize;
+      previewCanvas.height = outSize;
+
+      restartPreviewLoop();
+    }
+
+    function stopPreviewLoop() {
+      if (state.previewTimer) {
+        clearInterval(state.previewTimer);
+        state.previewTimer = null;
+      }
+    }
+
+    function drawPreviewFrame() {
+      if (state.images.length === 0) return;
+      state.previewIndex = state.previewIndex % state.images.length;
+      const item = state.images[state.previewIndex];
+      const outSize = previewCanvas.width;
+      previewCtx.clearRect(0, 0, outSize, outSize);
+      previewCtx.drawImage(item.canvas, 0, 0, outSize, outSize);
+    }
+
+    function restartPreviewLoop() {
+      stopPreviewLoop();
+      if (state.images.length === 0) return;
+      drawPreviewFrame();
+      if (state.images.length > 1) {
+        const delayMs = Math.max(50, Math.round((state.totalSeconds * 1000) / state.images.length));
+        state.previewTimer = setInterval(() => {
+          state.previewIndex = (state.previewIndex + 1) % state.images.length;
+          drawPreviewFrame();
+        }, delayMs);
+      }
+    }
+
+    function renderAll() {
+      renderSlots();
+      updateInfoAndPreview();
+    }
+
+    // === 長按拖曳重新排位（支援觸控與滑鼠）===
+    let dragState = null;
+
+    function attachLongPressDrag(slotEl, index) {
+      let pressTimer = null;
+      let startX = 0;
+      let startY = 0;
+      let pointerId = null;
+
+      const clearPress = () => {
+        if (pressTimer) {
+          clearTimeout(pressTimer);
+          pressTimer = null;
+        }
+      };
+
+      const onPointerMove = (e) => {
+        if (e.pointerId !== pointerId) return;
+
+        if (!dragState) {
+          if (Math.hypot(e.clientX - startX, e.clientY - startY) > 10) {
+            clearPress();
+            cleanupListeners();
+          }
+          return;
+        }
+
+        e.preventDefault();
+        dragState.ghost.style.left = `${e.clientX}px`;
+        dragState.ghost.style.top = `${e.clientY}px`;
+
+        const els = document.elementsFromPoint(e.clientX, e.clientY);
+        const targetSlot = els.find((el) => el.classList && el.classList.contains("slot-filled"));
+        if (targetSlot) {
+          const targetIdx = Number(targetSlot.dataset.index);
+          if (!Number.isNaN(targetIdx) && targetIdx !== dragState.currentIndex) {
+            const [moved] = state.images.splice(dragState.currentIndex, 1);
+            state.images.splice(targetIdx, 0, moved);
+            dragState.currentIndex = targetIdx;
+            renderSlots();
+            const newSource = slotsGrid.querySelector(`.slot-filled[data-index="${targetIdx}"]`);
+            if (newSource) newSource.classList.add("dragging-source");
+            restartPreviewLoop();
+          }
+        }
+      };
+
+      const onPointerUp = (e) => {
+        if (e.pointerId !== pointerId) return;
+        clearPress();
+        cleanupListeners();
+        if (dragState) {
+          dragState.ghost.remove();
+          dragState = null;
+          renderAll();
+        }
+      };
+
+      const cleanupListeners = () => {
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
+      };
+
+      slotEl.addEventListener("pointerdown", (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        if (e.target.closest(".slot-del-btn")) return;
+
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        window.addEventListener("pointermove", onPointerMove, { passive: false });
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerUp);
+
+        pressTimer = setTimeout(() => {
+          pressTimer = null;
+          if (navigator.vibrate) navigator.vibrate(25);
+
+          const ghost = document.createElement("div");
+          ghost.className = "drag-ghost";
+          ghost.style.left = `${startX}px`;
+          ghost.style.top = `${startY}px`;
+          ghost.innerHTML = `<img src="${state.images[index].thumbUrl}" />`;
+          document.body.appendChild(ghost);
+
+          slotEl.classList.add("dragging-source");
+          dragState = { currentIndex: index, ghost };
+        }, 320);
+      });
+
+      slotEl.addEventListener("contextmenu", (e) => e.preventDefault());
+    }
+
+    // === 檔案選擇 ===
+    fileInput.addEventListener("change", async (e) => {
+      const files = [...(e.target.files || [])];
+      if (files.length === 0) return;
+
+      const remain = MAX_IMAGES - state.images.length;
+      const toLoad = files.slice(0, remain);
+      statusText.textContent = "正在載入圖片...";
+
+      try {
+        for (const file of toLoad) {
+          const item = await loadAndResizeImage(file);
+          state.images.push(item);
+        }
+        statusText.textContent = files.length > remain ? `最多只能上傳 ${MAX_IMAGES} 張圖片` : "";
+      } catch (err) {
+        statusText.textContent = "圖片讀取失敗，請重試";
+      }
+
+      renderAll();
+    });
+
+    durationSlider.addEventListener("input", () => {
+      state.totalSeconds = Math.min(5, Math.max(0.5, Number(durationSlider.value) || 2.5));
+      updateInfoAndPreview();
+    });
+
+    // === 純前端 GIF89a 編碼器（Median Cut 256 色調色盤 + LZW 壓縮）===
+    function buildMedianCutPalette(rgba, width, height) {
+      const pixels = [];
+      const step = width * height > 20000 ? 2 : 1;
+      for (let i = 0; i < rgba.length; i += 4 * step) {
+        pixels.push([rgba[i], rgba[i + 1], rgba[i + 2]]);
+      }
+
+      function computeBox(list) {
+        let rMin = 255, rMax = 0, gMin = 255, gMax = 0, bMin = 255, bMax = 0;
+        for (let i = 0; i < list.length; i++) {
+          const p = list[i];
+          if (p[0] < rMin) rMin = p[0];
+          if (p[0] > rMax) rMax = p[0];
+          if (p[1] < gMin) gMin = p[1];
+          if (p[1] > gMax) gMax = p[1];
+          if (p[2] < bMin) bMin = p[2];
+          if (p[2] > bMax) bMax = p[2];
+        }
+        const rRange = rMax - rMin;
+        const gRange = gMax - gMin;
+        const bRange = bMax - bMin;
+        const maxRange = Math.max(rRange, gRange, bRange);
+        const channel = maxRange === rRange ? 0 : (maxRange === gRange ? 1 : 2);
+        return { list, maxRange, channel };
+      }
+
+      const boxes = [computeBox(pixels)];
+      while (boxes.length < 256) {
+        let bestIdx = -1;
+        let bestScore = -1;
+        for (let i = 0; i < boxes.length; i++) {
+          const b = boxes[i];
+          if (b.list.length > 1 && b.maxRange > 0) {
+            const score = b.maxRange * Math.sqrt(b.list.length);
+            if (score > bestScore) {
+              bestScore = score;
+              bestIdx = i;
+            }
+          }
+        }
+        if (bestIdx === -1) break;
+        const target = boxes.splice(bestIdx, 1)[0];
+        const ch = target.channel;
+        target.list.sort((a, b) => a[ch] - b[ch]);
+        const mid = target.list.length >> 1;
+        boxes.push(computeBox(target.list.slice(0, mid)));
+        boxes.push(computeBox(target.list.slice(mid)));
+      }
+
+      const palette = new Uint8Array(256 * 3);
+      for (let i = 0; i < boxes.length; i++) {
+        const list = boxes[i].list;
+        let rSum = 0, gSum = 0, bSum = 0;
+        for (let j = 0; j < list.length; j++) {
+          rSum += list[j][0];
+          gSum += list[j][1];
+          bSum += list[j][2];
+        }
+        const len = list.length || 1;
+        palette[i * 3] = Math.round(rSum / len);
+        palette[i * 3 + 1] = Math.round(gSum / len);
+        palette[i * 3 + 2] = Math.round(bSum / len);
+      }
+      return { palette, colorCount: boxes.length };
+    }
+
+    function mapPixelsToPalette(rgba, palette, colorCount) {
+      const pixelCount = rgba.length >> 2;
+      const indexed = new Uint8Array(pixelCount);
+      const cache = new Int16Array(32768).fill(-1);
+
+      for (let i = 0, p = 0; i < pixelCount; i++, p += 4) {
+        const r = rgba[p];
+        const g = rgba[p + 1];
+        const b = rgba[p + 2];
+        const key15 = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+        let bestIdx = cache[key15];
+        if (bestIdx === -1) {
+          let bestDist = Infinity;
+          bestIdx = 0;
+          for (let c = 0; c < colorCount; c++) {
+            const dr = r - palette[c * 3];
+            const dg = g - palette[c * 3 + 1];
+            const db = b - palette[c * 3 + 2];
+            const dist = dr * dr + dg * dg + db * db;
+            if (dist < bestDist) {
+              bestDist = dist;
+              bestIdx = c;
+              if (dist === 0) break;
+            }
+          }
+          cache[key15] = bestIdx;
+        }
+        indexed[i] = bestIdx;
+      }
+      return indexed;
+    }
+
+    function lzwEncode(indexedPixels, minCodeSize = 8) {
+      const clearCode = 1 << minCodeSize;
+      const eoiCode = clearCode + 1;
+      let codeSize = minCodeSize + 1;
+      let nextCode = eoiCode + 1;
+
+      const out = [minCodeSize];
+      let subBlock = [];
+      let curAccum = 0;
+      let curBits = 0;
+
+      function flushSubBlock() {
+        if (subBlock.length === 0) return;
+        out.push(subBlock.length);
+        for (let i = 0; i < subBlock.length; i++) out.push(subBlock[i]);
+        subBlock = [];
+      }
+
+      function writeCode(code) {
+        curAccum |= (code << curBits);
+        curBits += codeSize;
+        while (curBits >= 8) {
+          subBlock.push(curAccum & 0xff);
+          curAccum >>= 8;
+          curBits -= 8;
+          if (subBlock.length === 255) flushSubBlock();
+        }
+      }
+
+      const table = new Map();
+      writeCode(clearCode);
+
+      let prefix = indexedPixels[0];
+      for (let i = 1; i < indexedPixels.length; i++) {
+        const suffix = indexedPixels[i];
+        const key = (prefix << 8) | suffix;
+        const found = table.get(key);
+        if (found !== undefined) {
+          prefix = found;
+        } else {
+          writeCode(prefix);
+          if (nextCode < 4096) {
+            table.set(key, nextCode);
+            nextCode++;
+            if (nextCode > (1 << codeSize) && codeSize < 12) {
+              codeSize++;
+            }
+          } else {
+            writeCode(clearCode);
+            table.clear();
+            codeSize = minCodeSize + 1;
+            nextCode = eoiCode + 1;
+          }
+          prefix = suffix;
+        }
+      }
+
+      writeCode(prefix);
+      writeCode(eoiCode);
+      if (curBits > 0) {
+        subBlock.push(curAccum & 0xff);
+      }
+      flushSubBlock();
+      out.push(0x00); // Block Terminator
+      return out;
+    }
+
+    function encodeGifDataUrl(frames, width, height, delayCs) {
+      const bytes = [];
+      const pushStr = (s) => {
+        for (let i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i));
+      };
+      const push16 = (v) => {
+        bytes.push(v & 0xff, (v >> 8) & 0xff);
+      };
+
+      // GIF89a Header
+      pushStr("GIF89a");
+      // Logical Screen Descriptor
+      push16(width);
+      push16(height);
+      bytes.push(0x70, 0x00, 0x00);
+
+      // NETSCAPE2.0 無限循環擴充區塊
+      bytes.push(0x21, 0xff, 0x0b);
+      pushStr("NETSCAPE2.0");
+      bytes.push(0x03, 0x01, 0x00, 0x00, 0x00);
+
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext("2d", { willReadFrequently: true });
+
+      for (const frame of frames) {
+        tempCtx.clearRect(0, 0, width, height);
+        tempCtx.drawImage(frame.canvas, 0, 0, width, height);
+        const rgba = tempCtx.getImageData(0, 0, width, height).data;
+
+        const { palette, colorCount } = buildMedianCutPalette(rgba, width, height);
+        const indexed = mapPixelsToPalette(rgba, palette, colorCount);
+        const lzwBytes = lzwEncode(indexed, 8);
+
+        // Graphic Control Extension
+        bytes.push(0x21, 0xf9, 0x04, 0x04);
+        push16(delayCs);
+        bytes.push(0x00, 0x00);
+
+        // Image Descriptor (使用 Local Color Table 256 色)
+        bytes.push(0x2c);
+        push16(0);
+        push16(0);
+        push16(width);
+        push16(height);
+        bytes.push(0x87);
+
+        // Local Color Table
+        for (let i = 0; i < palette.length; i++) bytes.push(palette[i]);
+        // Image Data
+        for (let i = 0; i < lzwBytes.length; i++) bytes.push(lzwBytes[i]);
+      }
+
+      // Trailer
+      bytes.push(0x3b);
+
+      const uint8 = new Uint8Array(bytes);
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let i = 0; i < uint8.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, uint8.subarray(i, i + chunkSize));
+      }
+      return {
+        dataUrl: "data:image/gif;base64," + btoa(binary),
+        byteLength: uint8.length
+      };
+    }
+
+    // === 確認上傳 / 取消 ===
+    function closeSelf() {
+      stopPreviewLoop();
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "GIF_MAKER_CLOSE" }, "*");
+      } else {
+        window.close();
+      }
+    }
+
+    document.getElementById("btn-close-top").onclick = closeSelf;
+    document.getElementById("btn-cancel").onclick = closeSelf;
+
+    btnConfirm.onclick = () => {
+      if (state.images.length === 0 || state.isEncoding) return;
+      state.isEncoding = true;
+      btnConfirm.disabled = true;
+      statusText.textContent = "正在製作 GIF 動圖，請稍候...";
+
+      // 使用 setTimeout 讓按鈕與文字狀態先更新到畫面
+      setTimeout(() => {
+        try {
+          const outSize = getOutputSize();
+          const delayCs = Math.max(5, Math.round((state.totalSeconds * 100) / state.images.length));
+          const { dataUrl, byteLength } = encodeGifDataUrl(state.images, outSize, outSize, delayCs);
+
+          if (byteLength > MAX_GIF_BYTES) {
+            statusText.textContent = `檔案過大（${(byteLength / 1024 / 1024).toFixed(2)} MB），請減少張數`;
+            state.isEncoding = false;
+            btnConfirm.disabled = false;
+            return;
+          }
+
+          statusText.textContent = `製作完成（${Math.round(byteLength / 1024)} KB），上傳中...`;
+          stopPreviewLoop();
+
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: "GIF_MAKER_RESULT", dataUrl }, "*");
+          } else {
+            // 若單獨開啟此頁面測試，改為直接下載 GIF
+            const a = document.createElement("a");
+            a.href = dataUrl;
+            a.download = `baby-avatar-${Date.now()}.gif`;
+            a.click();
+            statusText.textContent = "已下載 GIF 檔案！";
+            state.isEncoding = false;
+            btnConfirm.disabled = false;
+          }
+        } catch (err) {
+          statusText.textContent = "GIF 製作失敗，請重試";
+          state.isEncoding = false;
+          btnConfirm.disabled = false;
+        }
+      }, 40);
+    };
+
+    renderAll();
+  </script>
+</body>
+</html>
