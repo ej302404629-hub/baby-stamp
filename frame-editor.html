@@ -523,9 +523,9 @@
     <div class="pos-stage-wrap">
       <div class="pos-square checkerboard">
         <span class="preview-placeholder" id="pos-empty">請先開啟檔案</span>
-        <canvas id="pos-canvas" width="250" height="250" class="hidden"></canvas>
+        <canvas id="pos-canvas" width="200" height="200" class="hidden"></canvas>
       </div>
-      <div class="pos-source-tag" id="pos-source-tag">拖曳調整位置 · 滑桿或雙指縮放（輸出 250×250）</div>
+      <div class="pos-source-tag" id="pos-source-tag">拖曳調整位置 · 滑桿或雙指縮放（輸出 200×200）</div>
     </div>
 
     <div class="control-box">
@@ -572,7 +572,7 @@
     import { parseGIF, decompressFrames } from "https://esm.sh/gifuct-js@2.1.2";
     import { GIFEncoder, quantize, applyPalette } from "https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js";
 
-    const OUT_SIZE = 250;
+    const OUT_SIZE = 200;
     const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB 上限
     const AVATAR_DIAMETER_RATIO = 0.67;
 
@@ -1287,7 +1287,7 @@
       pinchStartDist = 0;
     });
 
-    // === 輸出 250×250 PNG 或 GIF 並檢查大小 ===
+    // === 輸出 200×200 WebP 或 GIF 並檢查大小 ===
     function uint8ToBase64(uint8) {
       let binary = "";
       const chunk = 0x8000;
@@ -1303,7 +1303,7 @@
 
       state.isWorking = true;
       el.btnConfirmUpload.disabled = true;
-      el.statusText.textContent = state.isGif ? "正在編碼 250×250 GIF，請稍候..." : "正在輸出 250×250 PNG...";
+      el.statusText.textContent = state.isGif ? "正在編碼 200×200 GIF，請稍候..." : "正在輸出 200×200 WebP...";
 
       await new Promise((r) => setTimeout(r, 30));
 
@@ -1319,7 +1319,7 @@
         if (!state.isGif) {
           outCtx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
           drawFrameWithTransform(outCtx, frames[0].rgba, state.width, state.height, OUT_SIZE);
-          dataUrl = outCanvas.toDataURL("image/png");
+          dataUrl = outCanvas.toDataURL("image/webp", 0.85);
           byteLength = Math.ceil((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
         } else {
           const encoder = GIFEncoder();
@@ -1386,7 +1386,7 @@
         } else {
           const a = document.createElement("a");
           a.href = dataUrl;
-          a.download = `${frameName}-250x250.${state.isGif ? "gif" : "png"}`;
+          a.download = `${frameName}-200x200.${state.isGif ? "gif" : "webp"}`;
           a.click();
           el.statusText.textContent = "已下載結果檔案！";
           state.isWorking = false;
