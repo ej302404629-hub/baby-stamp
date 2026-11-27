@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>頭框去背與定位工具</title>
+  <style>
+    :root {
+      --theme-color: #3b82f6;
+      --danger-color: #ef4444;
+      --text-main: #1f2937;
+      --text-sub: #6b7280;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      margin: 0;
+      padding: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background: #ffffff;
+      color: var(--text-main);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 頂部標題 */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0;
+    }
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: #f3f4f6;
+      color: #4b5563;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* 開啟檔案區塊 */
+    .file-box {
+      background: #f9fafb;
+      border: 2px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .file-info {
+      min-width: 0;
+      flex: 1;
+    }
+    .file-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-meta {
+      font-size: 11px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    /* 雙頁籤列 */
+    .tabs {
+      display: flex;
+      background: #f3f4f6;
+      padding: 4px;
+      border-radius: 12px;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 9px 8px;
+      border-radius: 9px;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .tab-btn.active {
+      background: var(--theme-color);
+      color: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    /* 棋盤格透明背景 */
+    .checkerboard {
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+        linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+      background-size: 14px 14px;
+      background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+    }
+
+    /* 去背頁籤：雙預覽格 */
+    .nobg-preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .preview-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .preview-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .preview-square {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 14px;
+      border: 2px solid #e5e7eb;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background-color: #f8fafc;
+    }
+    .preview-square canvas {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      touch-action: none;
+    }
+    .preview-placeholder {
+      font-size: 12px;
+      color: #9ca3af;
+      text-align: center;
+      padding: 8px;
+      line-height: 1.4;
+    }
+
+    /* 取樣色與參數控制盒 */
+    .control-box {
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .sample-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+    .sample-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 700;
+    }
+    .color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 1.5px solid #9ca3af;
+      display: inline-block;
+    }
+    .scope-group {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #374151;
+      margin-top: 8px;
+    }
+    .scope-group label {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .slider-val {
+      color: var(--theme-color);
+      font-weight: 900;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--theme-color);
+      cursor: pointer;
+    }
+
+    /* 定位頁籤：正方形預覽視窗 */
+    .pos-stage-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .pos-square {
+      width: 240px;
+      height: 240px;
+      border-radius: 18px;
+      border: 2.5px solid var(--theme-color);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    }
+    .pos-square canvas {
+      width: 240px;
+      height: 240px;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+    }
+    .pos-square canvas:active { cursor: grabbing; }
+    .pos-source-tag {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+
+    .zoom-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .zoom-row input[type="range"] { flex: 1; }
+
+    /* GIF 頭尾雙滑桿剪輯條 */
+    .trim-box {
+      background: #f9fafb;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .trim-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .trim-info {
+      color: var(--theme-color);
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .dual-range-wrap {
+      position: relative;
+      height: 28px;
+      display: flex;
+      align-items: center;
+    }
+    .dual-range-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 6px;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+    .dual-range-fill {
+      position: absolute;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--theme-color);
+    }
+    .dual-range-input {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      margin: 0;
+      background: transparent;
+      pointer-events: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .dual-range-input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      pointer-events: auto;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--theme-color);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+    }
+    .dual-range-input::-moz-range-thumb {
+      pointer-events: auto;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--theme-color);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+    }
+
+    /* 通用按鈕 */
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--theme-color); color: #ffffff; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-sm { padding: 7px 11px; font-size: 12px; border-radius: 9px; }
+    .btn-block { width: 100%; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+    }
+    .actions .btn { flex: 1; }
+
+    .status-text {
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--theme-color);
+      min-height: 16px;
+      margin-top: 6px;
+    }
+
+    /* 超限提示視窗 */
+    .alert-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 999;
+    }
+    .alert-box {
+      background: #ffffff;
+      width: 100%;
+      max-width: 320px;
+      border-radius: 18px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    }
+    .alert-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--danger-color);
+      margin: 0 0 8px;
+    }
+    .alert-msg {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.6;
+      margin: 0 0 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h3 class="title">✨ 頭框去背與定位</h3>
+    <button type="button" class="close-btn" id="btn-close-top" title="關閉">×</button>
+  </div>
+
+  <!-- 單檔開啟區塊 -->
+  <div class="file-box">
+    <div class="file-info">
+      <div class="file-name" id="file-name-display">尚未選擇檔案</div>
+      <div class="file-meta" id="file-meta-display">支援單張靜態圖片（PNG/JPG/WebP）或 GIF 動圖</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" id="btn-open-file">開啟檔案</button>
+    <input type="file" id="file-input" accept="image/gif,image/png,image/jpeg,image/webp,image/*" class="hidden" />
+  </div>
+
+  <!-- 左右雙頁籤 -->
+  <div class="tabs">
+    <button type="button" class="tab-btn active" id="tab-btn-nobg">去背</button>
+    <button type="button" class="tab-btn" id="tab-btn-pos">定位</button>
+  </div>
+
+  <!-- 頁籤 1：去背 -->
+  <div id="panel-nobg">
+    <div class="nobg-preview-grid">
+      <div class="preview-card">
+        <span class="preview-label">原圖（點選或拖曳取樣點）</span>
+        <div class="preview-square checkerboard">
+          <span class="preview-placeholder" id="nobg-orig-empty">請先開啟檔案</span>
+          <canvas id="nobg-orig-canvas" class="hidden"></canvas>
+        </div>
+      </div>
+      <div class="preview-card">
+        <span class="preview-label">去背結果預覽</span>
+        <div class="preview-square checkerboard">
+          <span class="preview-placeholder" id="nobg-res-empty">去背效果將顯示於此</span>
+          <canvas id="nobg-res-canvas" class="hidden"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="control-box">
+      <div class="sample-row">
+        <div class="sample-left">
+          <span>取樣顏色：</span>
+          <span class="color-swatch" id="sample-swatch" style="background:#ffffff;"></span>
+          <span id="sample-hex" style="font-family:monospace;">#FFFFFF</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-center-sample" disabled>回正中央</button>
+      </div>
+
+      <div class="slider-row">
+        <span>Tolerance（容許度 0~300）</span>
+        <span class="slider-val" id="tol-val">100</span>
+      </div>
+      <input type="range" id="tol-slider" min="0" max="300" step="1" value="100" />
+
+      <div class="scope-group">
+        <label><input type="radio" name="nobg-scope" value="global" checked /> 全域去背</label>
+        <label><input type="radio" name="nobg-scope" value="flood" /> 相連區域去背</label>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn-primary btn-block" id="btn-apply-to-pos" disabled>
+      帶入定位頁面調整位置 →
+    </button>
+  </div>
+
+  <!-- 頁籤 2：定位 -->
+  <div id="panel-pos" class="hidden">
+    <div class="pos-stage-wrap">
+      <div class="pos-square checkerboard">
+        <span class="preview-placeholder" id="pos-empty">請先開啟檔案</span>
+        <canvas id="pos-canvas" width="250" height="250" class="hidden"></canvas>
+      </div>
+      <div class="pos-source-tag" id="pos-source-tag">拖曳調整位置 · 滑桿或雙指縮放（輸出 250×250）</div>
+    </div>
+
+    <div class="control-box">
+      <div class="zoom-row">
+        <span>縮放</span>
+        <input type="range" id="pos-zoom-slider" min="0.2" max="3" step="0.02" value="1" disabled />
+        <span class="slider-val" id="pos-zoom-val" style="min-width:42px; text-align:right;">100%</span>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-pos-reset" disabled>重設</button>
+      </div>
+    </div>
+
+    <!-- GIF 剪輯條（僅 GIF 多影格時顯示） -->
+    <div class="trim-box hidden" id="trim-box">
+      <div class="trim-header">
+        <span>✂️ GIF 長度剪輯條</span>
+        <span class="trim-info" id="trim-info">第 1 ~ 1 幀 (0.0 秒)</span>
+      </div>
+      <div class="dual-range-wrap">
+        <div class="dual-range-track"></div>
+        <div class="dual-range-fill" id="trim-fill"></div>
+        <input type="range" id="trim-start" class="dual-range-input" min="0" max="0" value="0" />
+        <input type="range" id="trim-end" class="dual-range-input" min="0" max="0" value="0" />
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn btn-secondary" id="btn-cancel">取消</button>
+      <button type="button" class="btn btn-primary" id="btn-confirm-upload" disabled>確認上傳</button>
+    </div>
+  </div>
+
+  <div class="status-text" id="status-text"></div>
+
+  <!-- 檔案超限提示視窗 -->
+  <div id="alert-overlay" class="alert-overlay hidden">
+    <div class="alert-box">
+      <h4 class="alert-title">⚠️ 檔案超過大小限制</h4>
+      <p class="alert-msg" id="alert-msg"></p>
+      <button type="button" class="btn btn-primary btn-block" id="btn-alert-ok">返回繼續編輯</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { parseGIF, decompressFrames } from "https://esm.sh/gifuct-js@2.1.2";
+    import { GIFEncoder, quantize, applyPalette } from "https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js";
+
+    const OUT_SIZE = 250;
+    const MAX_FILE_BYTES = 2 * 1024 * 1024; // 2MB 上限
+    // 頭像直徑佔外框寬度比例（對應主程式 63/87、100/160、126/184 的平均比例約 67%）
+    const AVATAR_DIAMETER_RATIO = 0.67;
+
+    // 讀取主程式主題色
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeColor = urlParams.get("theme");
+    if (themeColor && /^#[0-9a-fA-F]{3,8}$/.test(themeColor)) {
+      document.documentElement.style.setProperty("--theme-color", themeColor);
+    }
+
+    const state = {
+      activeTab: "nobg", // "nobg" | "pos"
+      fileName: "",
+      isGif: false,
+      width: 0,
+      height: 0,
+      origFrames: [],     // [{ rgba: Uint8ClampedArray, delay: number }]
+      removedFrames: null,// 去背後維持原解析度的影格陣列
+      posUsingRemoved: false,
+
+      // 去背設定
+      sampleX: 0,
+      sampleY: 0,
+      sampleColor: { r: 255, g: 255, b: 255 },
+      tolerance: 100,
+      scope: "global", // "global" | "flood"
+
+      // 定位設定
+      offsetX: 0,
+      offsetY: 0,
+      scale: 1,
+      trimStart: 0,
+      trimEnd: 0,
+
+      // 播放狀態
+      playTimer: null,
+      playIdx: 0,
+      isWorking: false
+    };
+
+    // DOM 元素
+    const el = {
+      fileInput: document.getElementById("file-input"),
+      btnOpenFile: document.getElementById("btn-open-file"),
+      fileNameDisplay: document.getElementById("file-name-display"),
+      fileMetaDisplay: document.getElementById("file-meta-display"),
+      tabBtnNobg: document.getElementById("tab-btn-nobg"),
+      tabBtnPos: document.getElementById("tab-btn-pos"),
+      panelNobg: document.getElementById("panel-nobg"),
+      panelPos: document.getElementById("panel-pos"),
+
+      nobgOrigEmpty: document.getElementById("nobg-orig-empty"),
+      nobgResEmpty: document.getElementById("nobg-res-empty"),
+      nobgOrigCanvas: document.getElementById("nobg-orig-canvas"),
+      nobgResCanvas: document.getElementById("nobg-res-canvas"),
+      sampleSwatch: document.getElementById("sample-swatch"),
+      sampleHex: document.getElementById("sample-hex"),
+      btnCenterSample: document.getElementById("btn-center-sample"),
+      tolSlider: document.getElementById("tol-slider"),
+      tolVal: document.getElementById("tol-val"),
+      btnApplyToPos: document.getElementById("btn-apply-to-pos"),
+
+      posEmpty: document.getElementById("pos-empty"),
+      posCanvas: document.getElementById("pos-canvas"),
+      posSourceTag: document.getElementById("pos-source-tag"),
+      posZoomSlider: document.getElementById("pos-zoom-slider"),
+      posZoomVal: document.getElementById("pos-zoom-val"),
+      btnPosReset: document.getElementById("btn-pos-reset"),
+
+      trimBox: document.getElementById("trim-box"),
+      trimInfo: document.getElementById("trim-info"),
+      trimFill: document.getElementById("trim-fill"),
+      trimStart: document.getElementById("trim-start"),
+      trimEnd: document.getElementById("trim-end"),
+
+      btnConfirmUpload: document.getElementById("btn-confirm-upload"),
+      statusText: document.getElementById("status-text"),
+      alertOverlay: document.getElementById("alert-overlay"),
+      alertMsg: document.getElementById("alert-msg"),
+      btnAlertOk: document.getElementById("btn-alert-ok")
+    };
+
+    // 離屏畫布
+    const tmpCanvas = document.createElement("canvas");
+    const tmpCtx = tmpCanvas.getContext("2d", { willReadFrequently: true });
+
+    // === 工具函式 ===
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+    }
+
+    function showAlert(msg) {
+      el.alertMsg.textContent = msg;
+      el.alertOverlay.classList.remove("hidden");
+    }
+    el.btnAlertOk.onclick = () => el.alertOverlay.classList.add("hidden");
+
+    function getActivePosFrames() {
+      return state.posUsingRemoved && state.removedFrames ? state.removedFrames : state.origFrames;
+    }
+
+    // === 檔案解碼（支援 GIF 與一般靜態圖）===
+    async function decodeFile(file) {
+      const isGif = file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+
+      if (isGif) {
+        const buffer = await file.arrayBuffer();
+        const parsed = parseGIF(buffer);
+        const rawFrames = decompressFrames(parsed, true);
+        if (!rawFrames || rawFrames.length === 0) throw new Error("無法解析此 GIF 檔案");
+
+        const width = parsed.lsd.width;
+        const height = parsed.lsd.height;
+        const canvasBuf = new Uint8ClampedArray(width * height * 4);
+        let savedBuf = null;
+        const frames = [];
+
+        for (let i = 0; i < rawFrames.length; i++) {
+          const f = rawFrames[i];
+          const { left, top, width: fw, height: fh } = f.dims;
+          if (f.disposalType === 3) savedBuf = new Uint8ClampedArray(canvasBuf);
+
+          const patch = f.patch;
+          for (let row = 0; row < fh; row++) {
+            const dy = top + row;
+            if (dy < 0 || dy >= height) continue;
+            for (let col = 0; col < fw; col++) {
+              const dx = left + col;
+              if (dx < 0 || dx >= width) continue;
+              const pIdx = (row * fw + col) * 4;
+              if (patch[pIdx + 3] > 0) {
+                const dIdx = (dy * width + dx) * 4;
+                canvasBuf[dIdx] = patch[pIdx];
+                canvasBuf[dIdx + 1] = patch[pIdx + 1];
+                canvasBuf[dIdx + 2] = patch[pIdx + 2];
+                canvasBuf[dIdx + 3] = patch[pIdx + 3];
+              }
+            }
+          }
+
+          let delay = typeof f.delay === "number" ? f.delay : 100;
+          if (rawFrames.length > 1 && delay <= 0) delay = 100;
+          frames.push({ rgba: new Uint8ClampedArray(canvasBuf), delay });
+
+          if (f.disposalType === 2) {
+            for (let row = 0; row < fh; row++) {
+              const dy = top + row;
+              if (dy < 0 || dy >= height) continue;
+              for (let col = 0; col < fw; col++) {
+                const dx = left + col;
+                if (dx < 0 || dx >= width) continue;
+                const dIdx = (dy * width + dx) * 4;
+                canvasBuf[dIdx] = canvasBuf[dIdx + 1] = canvasBuf[dIdx + 2] = canvasBuf[dIdx + 3] = 0;
+              }
+            }
+          } else if (f.disposalType === 3 && savedBuf) {
+            canvasBuf.set(savedBuf);
+          }
+        }
+        return { isGif: true, width, height, frames };
+      }
+
+      // 靜態圖片
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const w = img.naturalWidth || img.width;
+            const h = img.naturalHeight || img.height;
+            tmpCanvas.width = w;
+            tmpCanvas.height = h;
+            tmpCtx.clearRect(0, 0, w, h);
+            tmpCtx.drawImage(img, 0, 0);
+            const rgba = new Uint8ClampedArray(tmpCtx.getImageData(0, 0, w, h).data);
+            resolve({ isGif: false, width: w, height: h, frames: [{ rgba, delay: 0 }] });
+          };
+          img.onerror = () => reject(new Error("圖片讀取失敗"));
+          img.src = ev.target.result;
+        };
+        reader.onerror = () => reject(new Error("檔案讀取失敗"));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // === 去背核心演算法（維持原解析度）===
+    function updateSampleColorFromPoint() {
+      if (state.origFrames.length === 0) return;
+      const sx = Math.max(0, Math.min(state.width - 1, Math.round(state.sampleX)));
+      const sy = Math.max(0, Math.min(state.height - 1, Math.round(state.sampleY)));
+      const rgba = state.origFrames[0].rgba;
+      const off = (sy * state.width + sx) * 4;
+      state.sampleColor = { r: rgba[off], g: rgba[off + 1], b: rgba[off + 2] };
+      const hex = rgbToHex(state.sampleColor.r, state.sampleColor.g, state.sampleColor.b);
+      el.sampleSwatch.style.backgroundColor = hex;
+      el.sampleHex.textContent = hex;
+    }
+
+    function applyRemoveBgToRgba(srcRgba, width, height, targetColor, tolerance, scope, seedX, seedY) {
+      const rgba = new Uint8ClampedArray(srcRgba);
+      const tr = targetColor.r;
+      const tg = targetColor.g;
+      const tb = targetColor.b;
+      const tolSq = tolerance * tolerance;
+
+      if (scope === "flood") {
+        const sx = Math.max(0, Math.min(width - 1, Math.round(seedX)));
+        const sy = Math.max(0, Math.min(height - 1, Math.round(seedY)));
+        const total = width * height;
+        const visited = new Uint8Array(total);
+        const queue = new Int32Array(total);
+        let head = 0, tail = 0;
+
+        const startIdx = sy * width + sx;
+        const sOff = startIdx * 4;
+        const sDist = (rgba[sOff] - tr) ** 2 + (rgba[sOff + 1] - tg) ** 2 + (rgba[sOff + 2] - tb) ** 2;
+        if (rgba[sOff + 3] === 0 || sDist <= tolSq) {
+          visited[startIdx] = 1;
+          queue[tail++] = startIdx;
+        }
+
+        const pushIfMatch = (nIdx) => {
+          if (visited[nIdx]) return;
+          const nOff = nIdx * 4;
+          if (rgba[nOff + 3] === 0) {
+            visited[nIdx] = 1;
+            queue[tail++] = nIdx;
+            return;
+          }
+          const dr = rgba[nOff] - tr;
+          const dg = rgba[nOff + 1] - tg;
+          const db = rgba[nOff + 2] - tb;
+          if (dr * dr + dg * dg + db * db <= tolSq) {
+            visited[nIdx] = 1;
+            queue[tail++] = nIdx;
+          }
+        };
+
+        while (head < tail) {
+          const pIdx = queue[head++];
+          const off = pIdx * 4;
+          rgba[off] = rgba[off + 1] = rgba[off + 2] = rgba[off + 3] = 0;
+          const x = pIdx % width;
+          const y = (pIdx - x) / width;
+          if (x > 0) pushIfMatch(pIdx - 1);
+          if (x < width - 1) pushIfMatch(pIdx + 1);
+          if (y > 0) pushIfMatch(pIdx - width);
+          if (y < height - 1) pushIfMatch(pIdx + width);
+        }
+      } else {
+        for (let i = 0; i < rgba.length; i += 4) {
+          if (rgba[i + 3] === 0) continue;
+          const dr = rgba[i] - tr;
+          const dg = rgba[i + 1] - tg;
+          const db = rgba[i + 2] - tb;
+          if (dr * dr + dg * dg + db * db <= tolSq) {
+            rgba[i] = rgba[i + 1] = rgba[i + 2] = rgba[i + 3] = 0;
+          }
+        }
+      }
+      return rgba;
+    }
+
+    // === 去背頁籤渲染 ===
+    function renderNobgPreviewFrame() {
+      if (state.origFrames.length === 0) return;
+      const idx = state.playIdx % state.origFrames.length;
+      const frame = state.origFrames[idx];
+      const w = state.width;
+      const h = state.height;
+
+      // 1. 原圖 + 紅色可移動取樣準星
+      const origCtx = el.nobgOrigCanvas.getContext("2d");
+      tmpCanvas.width = w;
+      tmpCanvas.height = h;
+      tmpCtx.putImageData(new ImageData(frame.rgba, w, h), 0, 0);
+      origCtx.clearRect(0, 0, w, h);
+      origCtx.drawImage(tmpCanvas, 0, 0);
+
+      const rect = el.nobgOrigCanvas.getBoundingClientRect();
+      const scale = rect.width > 0 ? w / rect.width : 1;
+      const cx = state.sampleX;
+      const cy = state.sampleY;
+      const cross = Math.max(8, 12 * scale);
+      const radius = Math.max(5, 7 * scale);
+
+      origCtx.save();
+      origCtx.strokeStyle = "#ffffff";
+      origCtx.lineWidth = Math.max(2.5, 3.5 * scale);
+      origCtx.beginPath();
+      origCtx.moveTo(cx - cross, cy); origCtx.lineTo(cx + cross, cy);
+      origCtx.moveTo(cx, cy - cross); origCtx.lineTo(cx, cy + cross);
+      origCtx.stroke();
+
+      origCtx.strokeStyle = "#ef4444";
+      origCtx.lineWidth = Math.max(1.2, 1.8 * scale);
+      origCtx.beginPath();
+      origCtx.moveTo(cx - cross, cy); origCtx.lineTo(cx + cross, cy);
+      origCtx.moveTo(cx, cy - cross); origCtx.lineTo(cx, cy + cross);
+      origCtx.stroke();
+      origCtx.beginPath();
+      origCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+      origCtx.stroke();
+      origCtx.restore();
+
+      // 2. 即時去背結果預覽
+      const resRgba = applyRemoveBgToRgba(
+        frame.rgba, w, h, state.sampleColor, state.tolerance, state.scope, state.sampleX, state.sampleY
+      );
+      const resCtx = el.nobgResCanvas.getContext("2d");
+      tmpCtx.putImageData(new ImageData(resRgba, w, h), 0, 0);
+      resCtx.clearRect(0, 0, w, h);
+      resCtx.drawImage(tmpCanvas, 0, 0);
+    }
+
+    // === 定位頁籤渲染（含圓形笑臉頭像參考圖）===
+    function drawSmileyAvatar(ctx, size) {
+      const cx = size / 2;
+      const cy = size / 2;
+      const r = (size * AVATAR_DIAMETER_RATIO) / 2;
+
+      ctx.save();
+      // 淡黃色圓形頭像底色
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = "#fef08a";
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = "#f59e0b";
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 腮紅
+      ctx.fillStyle = "rgba(251, 113, 133, 0.45)";
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.46, cy + r * 0.1, r * 0.14, 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.46, cy + r * 0.1, r * 0.14, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 眼睛
+      ctx.fillStyle = "#1f2937";
+      ctx.beginPath();
+      ctx.arc(cx - r * 0.28, cy - r * 0.14, r * 0.09, 0, Math.PI * 2);
+      ctx.arc(cx + r * 0.28, cy - r * 0.14, r * 0.09, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 微笑嘴巴
+      ctx.strokeStyle = "#b45309";
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.arc(cx, cy + r * 0.04, r * 0.34, 0.18 * Math.PI, 0.82 * Math.PI);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawFrameWithTransform(ctx, rgba, w, h, outSize) {
+      tmpCanvas.width = w;
+      tmpCanvas.height = h;
+      tmpCtx.putImageData(new ImageData(rgba, w, h), 0, 0);
+
+      const baseScale = Math.min(outSize / w, outSize / h);
+      const drawW = w * baseScale * state.scale;
+      const drawH = h * baseScale * state.scale;
+      const dx = outSize / 2 + state.offsetX - drawW / 2;
+      const dy = outSize / 2 + state.offsetY - drawH / 2;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(tmpCanvas, dx, dy, drawW, drawH);
+    }
+
+    function renderPosPreviewFrame() {
+      const frames = getActivePosFrames();
+      if (frames.length === 0) return;
+
+      if (state.playIdx < state.trimStart || state.playIdx > state.trimEnd) {
+        state.playIdx = state.trimStart;
+      }
+      const frame = frames[state.playIdx] || frames[0];
+      const ctx = el.posCanvas.getContext("2d");
+      ctx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
+
+      // 1. 先畫中間圓形笑臉頭像（符合頭像與外框比例）
+      drawSmileyAvatar(ctx, OUT_SIZE);
+      // 2. 再將外框疊加於上方
+      drawFrameWithTransform(ctx, frame.rgba, state.width, state.height, OUT_SIZE);
+    }
+
+    // === 動圖播放迴圈 ===
+    function stopPlayback() {
+      if (state.playTimer) {
+        clearTimeout(state.playTimer);
+        state.playTimer = null;
+      }
+    }
+
+    function startPlayback() {
+      stopPlayback();
+      if (state.origFrames.length === 0) return;
+
+      const tick = () => {
+        if (state.activeTab === "nobg") {
+          renderNobgPreviewFrame();
+          if (state.origFrames.length > 1) {
+            const delay = Math.max(30, state.origFrames[state.playIdx % state.origFrames.length].delay || 100);
+            state.playIdx = (state.playIdx + 1) % state.origFrames.length;
+            state.playTimer = setTimeout(tick, delay);
+          }
+        } else {
+          const frames = getActivePosFrames();
+          if (state.playIdx < state.trimStart || state.playIdx > state.trimEnd) {
+            state.playIdx = state.trimStart;
+          }
+          renderPosPreviewFrame();
+          if (state.trimEnd > state.trimStart) {
+            const delay = Math.max(30, frames[state.playIdx].delay || 100);
+            state.playIdx = state.playIdx >= state.trimEnd ? state.trimStart : state.playIdx + 1;
+            state.playTimer = setTimeout(tick, delay);
+          }
+        }
+      };
+
+      tick();
+    }
+
+    // === 頁籤切換 ===
+    function switchTab(tab) {
+      state.activeTab = tab;
+      const isNobg = tab === "nobg";
+      el.tabBtnNobg.classList.toggle("active", isNobg);
+      el.tabBtnPos.classList.toggle("active", !isNobg);
+      el.panelNobg.classList.toggle("hidden", !isNobg);
+      el.panelPos.classList.toggle("hidden", isNobg);
+      state.playIdx = isNobg ? 0 : state.trimStart;
+      startPlayback();
+    }
+
+    el.tabBtnNobg.onclick = () => switchTab("nobg");
+    el.tabBtnPos.onclick = () => switchTab("pos");
+
+    // === 剪輯條更新 ===
+    function updateTrimUI() {
+      const total = state.origFrames.length;
+      if (!state.isGif || total <= 1) {
+        el.trimBox.classList.add("hidden");
+        return;
+      }
+      el.trimBox.classList.remove("hidden");
+      const maxIdx = total - 1;
+      el.trimStart.max = String(maxIdx);
+      el.trimEnd.max = String(maxIdx);
+      el.trimStart.value = String(state.trimStart);
+      el.trimEnd.value = String(state.trimEnd);
+
+      const leftPct = (state.trimStart / maxIdx) * 100;
+      const rightPct = (state.trimEnd / maxIdx) * 100;
+      el.trimFill.style.left = `${leftPct}%`;
+      el.trimFill.style.width = `${Math.max(0, rightPct - leftPct)}%`;
+
+      let totalMs = 0;
+      for (let i = state.trimStart; i <= state.trimEnd; i++) {
+        totalMs += Math.max(20, state.origFrames[i].delay || 100);
+      }
+      el.trimInfo.textContent = `第 ${state.trimStart + 1} ~ ${state.trimEnd + 1} 幀 / 共 ${total} 幀 (${(totalMs / 1000).toFixed(1)} 秒)`;
+    }
+
+    el.trimStart.oninput = () => {
+      let val = Number(el.trimStart.value);
+      if (val > state.trimEnd) {
+        val = state.trimEnd;
+        el.trimStart.value = String(val);
+      }
+      state.trimStart = val;
+      state.playIdx = val;
+      updateTrimUI();
+      startPlayback();
+    };
+
+    el.trimEnd.oninput = () => {
+      let val = Number(el.trimEnd.value);
+      if (val < state.trimStart) {
+        val = state.trimStart;
+        el.trimEnd.value = String(val);
+      }
+      state.trimEnd = val;
+      if (state.playIdx > val) state.playIdx = state.trimStart;
+      updateTrimUI();
+      startPlayback();
+    };
+
+    // === 開啟檔案（單檔）===
+    el.btnOpenFile.onclick = () => {
+      if (state.isWorking) return;
+      el.fileInput.value = "";
+      el.fileInput.click();
+    };
+
+    el.fileInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      stopPlayback();
+      el.statusText.textContent = "正在解析檔案...";
+      try {
+        const decoded = await decodeFile(file);
+        state.fileName = file.name;
+        state.isGif = decoded.isGif;
+        state.width = decoded.width;
+        state.height = decoded.height;
+        state.origFrames = decoded.frames;
+        state.removedFrames = null;
+        state.posUsingRemoved = false;
+
+        // 重設去背取樣點至正中央
+        state.sampleX = Math.floor(decoded.width / 2);
+        state.sampleY = Math.floor(decoded.height / 2);
+        updateSampleColorFromPoint();
+
+        // 重設定位與剪輯範圍
+        state.offsetX = 0;
+        state.offsetY = 0;
+        state.scale = 1;
+        state.trimStart = 0;
+        state.trimEnd = decoded.frames.length - 1;
+        state.playIdx = 0;
+
+        el.posZoomSlider.value = "1";
+        el.posZoomVal.textContent = "100%";
+
+        el.nobgOrigCanvas.width = decoded.width;
+        el.nobgOrigCanvas.height = decoded.height;
+        el.nobgResCanvas.width = decoded.width;
+        el.nobgResCanvas.height = decoded.height;
+
+        el.nobgOrigEmpty.classList.add("hidden");
+        el.nobgResEmpty.classList.add("hidden");
+        el.nobgOrigCanvas.classList.remove("hidden");
+        el.nobgResCanvas.classList.remove("hidden");
+        el.posEmpty.classList.add("hidden");
+        el.posCanvas.classList.remove("hidden");
+
+        el.btnCenterSample.disabled = false;
+        el.btnApplyToPos.disabled = false;
+        el.posZoomSlider.disabled = false;
+        el.btnPosReset.disabled = false;
+        el.btnConfirmUpload.disabled = false;
+
+        el.fileNameDisplay.textContent = file.name;
+        el.fileMetaDisplay.textContent = `${decoded.isGif ? "GIF 動圖" : "靜態圖片"} · ${decoded.width}×${decoded.height} px${decoded.isGif ? ` · ${decoded.frames.length} 幀` : ""}`;
+        el.posSourceTag.textContent = "目前顯示：原始圖片（拖曳移動 · 雙指或滑桿縮放）";
+        el.statusText.textContent = "";
+
+        updateTrimUI();
+        startPlayback();
+      } catch (err) {
+        el.statusText.textContent = err?.message || "檔案讀取失敗，請重試";
+      }
+    };
+
+    // === 去背頁籤互動：移動取樣點 ===
+    let isPickingSample = false;
+    function moveSampleByPointer(e) {
+      if (state.origFrames.length === 0) return;
+      const rect = el.nobgOrigCanvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      const x = ((e.clientX - rect.left) / rect.width) * state.width;
+      const y = ((e.clientY - rect.top) / rect.height) * state.height;
+      state.sampleX = Math.max(0, Math.min(state.width - 1, Math.round(x)));
+      state.sampleY = Math.max(0, Math.min(state.height - 1, Math.round(y)));
+      updateSampleColorFromPoint();
+      renderNobgPreviewFrame();
+    }
+
+    el.nobgOrigCanvas.addEventListener("pointerdown", (e) => {
+      if (state.origFrames.length === 0) return;
+      isPickingSample = true;
+      el.nobgOrigCanvas.setPointerCapture(e.pointerId);
+      moveSampleByPointer(e);
+    });
+    el.nobgOrigCanvas.addEventListener("pointermove", (e) => {
+      if (!isPickingSample) return;
+      moveSampleByPointer(e);
+    });
+    const endSamplePick = () => { isPickingSample = false; };
+    el.nobgOrigCanvas.addEventListener("pointerup", endSamplePick);
+    el.nobgOrigCanvas.addEventListener("pointercancel", endSamplePick);
+
+    el.btnCenterSample.onclick = () => {
+      if (state.origFrames.length === 0) return;
+      state.sampleX = Math.floor(state.width / 2);
+      state.sampleY = Math.floor(state.height / 2);
+      updateSampleColorFromPoint();
+      renderNobgPreviewFrame();
+    };
+
+    el.tolSlider.oninput = () => {
+      state.tolerance = Number(el.tolSlider.value);
+      el.tolVal.textContent = String(state.tolerance);
+      renderNobgPreviewFrame();
+    };
+
+    document.querySelectorAll('input[name="nobg-scope"]').forEach((radio) => {
+      radio.onchange = () => {
+        state.scope = radio.value;
+        renderNobgPreviewFrame();
+      };
+    });
+
+    // === 帶入定位頁面調整位置 ===
+    el.btnApplyToPos.onclick = async () => {
+      if (state.origFrames.length === 0 || state.isWorking) return;
+      state.isWorking = true;
+      el.btnApplyToPos.disabled = true;
+      el.statusText.textContent = "正在套用去背至全部影格...";
+
+      await new Promise((r) => setTimeout(r, 20));
+      try {
+        const resultFrames = [];
+        for (let i = 0; i < state.origFrames.length; i++) {
+          const f = state.origFrames[i];
+          const outRgba = applyRemoveBgToRgba(
+            f.rgba, state.width, state.height, state.sampleColor, state.tolerance, state.scope, state.sampleX, state.sampleY
+          );
+          resultFrames.push({ rgba: outRgba, delay: f.delay });
+        }
+        state.removedFrames = resultFrames;
+        state.posUsingRemoved = true;
+        el.posSourceTag.textContent = "目前顯示：已去背圖片（拖曳移動 · 雙指或滑桿縮放）";
+        el.statusText.textContent = "已帶入去背圖片！請調整位置後點擊確認上傳";
+        switchTab("pos");
+      } finally {
+        state.isWorking = false;
+        el.btnApplyToPos.disabled = false;
+      }
+    };
+
+    // === 定位頁籤互動：拖曳移動與雙指/滑桿縮放 ===
+    el.posZoomSlider.oninput = () => {
+      state.scale = Number(el.posZoomSlider.value);
+      el.posZoomVal.textContent = `${Math.round(state.scale * 100)}%`;
+      renderPosPreviewFrame();
+    };
+
+    el.btnPosReset.onclick = () => {
+      state.offsetX = 0;
+      state.offsetY = 0;
+      state.scale = 1;
+      el.posZoomSlider.value = "1";
+      el.posZoomVal.textContent = "100%";
+      renderPosPreviewFrame();
+    };
+
+    let isDraggingPos = false;
+    let lastPosX = 0, lastPosY = 0;
+    let pinchStartDist = 0, pinchStartScale = 1;
+
+    el.posCanvas.addEventListener("mousedown", (e) => {
+      if (state.origFrames.length === 0) return;
+      isDraggingPos = true;
+      lastPosX = e.clientX;
+      lastPosY = e.clientY;
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!isDraggingPos) return;
+      const rect = el.posCanvas.getBoundingClientRect();
+      const ratio = rect.width > 0 ? OUT_SIZE / rect.width : 1;
+      state.offsetX += (e.clientX - lastPosX) * ratio;
+      state.offsetY += (e.clientY - lastPosY) * ratio;
+      lastPosX = e.clientX;
+      lastPosY = e.clientY;
+      renderPosPreviewFrame();
+    });
+    window.addEventListener("mouseup", () => { isDraggingPos = false; });
+
+    el.posCanvas.addEventListener("touchstart", (e) => {
+      if (state.origFrames.length === 0) return;
+      if (e.touches.length === 1) {
+        isDraggingPos = true;
+        lastPosX = e.touches[0].clientX;
+        lastPosY = e.touches[0].clientY;
+      } else if (e.touches.length === 2) {
+        isDraggingPos = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        pinchStartDist = Math.hypot(dx, dy);
+        pinchStartScale = state.scale;
+      }
+    }, { passive: true });
+
+    el.posCanvas.addEventListener("touchmove", (e) => {
+      if (state.origFrames.length === 0) return;
+      if (e.touches.length === 1 && isDraggingPos) {
+        e.preventDefault();
+        const rect = el.posCanvas.getBoundingClientRect();
+        const ratio = rect.width > 0 ? OUT_SIZE / rect.width : 1;
+        state.offsetX += (e.touches[0].clientX - lastPosX) * ratio;
+        state.offsetY += (e.touches[0].clientY - lastPosY) * ratio;
+        lastPosX = e.touches[0].clientX;
+        lastPosY = e.touches[0].clientY;
+        renderPosPreviewFrame();
+      } else if (e.touches.length === 2 && pinchStartDist > 0) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        state.scale = Math.max(0.2, Math.min(3, pinchStartScale * (dist / pinchStartDist)));
+        el.posZoomSlider.value = state.scale.toFixed(2);
+        el.posZoomVal.textContent = `${Math.round(state.scale * 100)}%`;
+        renderPosPreviewFrame();
+      }
+    }, { passive: false });
+
+    el.posCanvas.addEventListener("touchend", () => {
+      isDraggingPos = false;
+      pinchStartDist = 0;
+    });
+
+    // === 輸出 250×250 PNG 或 GIF 並檢查大小 ===
+    function uint8ToBase64(uint8) {
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < uint8.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, uint8.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+
+    el.btnConfirmUpload.onclick = async () => {
+      const frames = getActivePosFrames();
+      if (frames.length === 0 || state.isWorking) return;
+
+      state.isWorking = true;
+      el.btnConfirmUpload.disabled = true;
+      el.statusText.textContent = state.isGif ? "正在編碼 250×250 GIF，請稍候..." : "正在輸出 250×250 PNG...";
+
+      await new Promise((r) => setTimeout(r, 30));
+
+      try {
+        const outCanvas = document.createElement("canvas");
+        outCanvas.width = OUT_SIZE;
+        outCanvas.height = OUT_SIZE;
+        const outCtx = outCanvas.getContext("2d", { willReadFrequently: true });
+
+        let dataUrl = "";
+        let byteLength = 0;
+
+        if (!state.isGif) {
+          outCtx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
+          drawFrameWithTransform(outCtx, frames[0].rgba, state.width, state.height, OUT_SIZE);
+          dataUrl = outCanvas.toDataURL("image/png");
+          byteLength = Math.ceil((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
+        } else {
+          const encoder = GIFEncoder();
+          const start = state.trimStart;
+          const end = state.trimEnd;
+
+          for (let i = start; i <= end; i++) {
+            outCtx.clearRect(0, 0, OUT_SIZE, OUT_SIZE);
+            drawFrameWithTransform(outCtx, frames[i].rgba, state.width, state.height, OUT_SIZE);
+            const imgData = outCtx.getImageData(0, 0, OUT_SIZE, OUT_SIZE).data;
+
+            // 清理半透明邊緣以獲得乾淨的 1-bit GIF 透明效果
+            for (let p = 0; p < imgData.length; p += 4) {
+              if (imgData[p + 3] >= 128) {
+                imgData[p + 3] = 255;
+              } else {
+                imgData[p] = imgData[p + 1] = imgData[p + 2] = imgData[p + 3] = 0;
+              }
+            }
+
+            const palette = quantize(imgData, 256, { format: "rgba4444", oneBitAlpha: true });
+            const indexed = applyPalette(imgData, palette, "rgba4444");
+
+            let transIdx = -1;
+            for (let c = 0; c < palette.length; c++) {
+              if (palette[c].length >= 4 && palette[c][3] === 0) {
+                transIdx = c;
+                break;
+              }
+            }
+
+            encoder.writeFrame(indexed, OUT_SIZE, OUT_SIZE, {
+              palette,
+              delay: Math.max(20, frames[i].delay || 100),
+              transparent: transIdx !== -1,
+              transparentIndex: transIdx !== -1 ? transIdx : 0,
+              dispose: 2,
+              repeat: i === start ? 0 : undefined
+            });
+          }
+
+          encoder.finish();
+          const bytes = encoder.bytes();
+          byteLength = bytes.length;
+          dataUrl = "data:image/gif;base64," + uint8ToBase64(bytes);
+        }
+
+        if (byteLength > MAX_FILE_BYTES) {
+          const mb = (byteLength / 1024 / 1024).toFixed(2);
+          el.statusText.textContent = "";
+          showAlert(
+            `輸出檔案大小為 ${mb} MB，已超過 2 MB 上限！${state.isGif ? "請拉動下方剪輯條縮短 GIF 影格範圍後再試。" : "請調整圖片後重試。"}`
+          );
+          state.isWorking = false;
+          el.btnConfirmUpload.disabled = false;
+          return;
+        }
+
+        el.statusText.textContent = `輸出完成（${Math.round(byteLength / 1024)} KB），上傳中...`;
+        stopPlayback();
+
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: "FRAME_EDITOR_RESULT", dataUrl }, "*");
+        } else {
+          const a = document.createElement("a");
+          a.href = dataUrl;
+          a.download = `frame-250x250.${state.isGif ? "gif" : "png"}`;
+          a.click();
+          el.statusText.textContent = "已下載結果檔案！";
+          state.isWorking = false;
+          el.btnConfirmUpload.disabled = false;
+        }
+      } catch (err) {
+        el.statusText.textContent = "輸出失敗，請重試";
+        state.isWorking = false;
+        el.btnConfirmUpload.disabled = false;
+      }
+    };
+
+    // === 關閉 ===
+    function closeSelf() {
+      stopPlayback();
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "FRAME_EDITOR_CLOSE" }, "*");
+      } else {
+        window.close();
+      }
+    }
+    document.getElementById("btn-close-top").onclick = closeSelf;
+    document.getElementById("btn-cancel").onclick = closeSelf;
+  </script>
+</body>
+</html>

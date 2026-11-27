@@ -1103,6 +1103,32 @@
       border: none;
       display: block;
     }
+    /* 外框去背與定位外掛視窗 */
+    .frame-editor-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.58);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 190;
+      padding: 12px;
+    }
+    .frame-editor-modal {
+      width: 100%;
+      max-width: 430px;
+      height: min(680px, 92vh);
+      background: #ffffff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    }
+    .frame-editor-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
     
     /* 選擇關主確認後的淡出與歡迎轉場 */
     #page-guardian {
@@ -1602,6 +1628,12 @@
   <div id="gif-maker-overlay" class="gif-maker-overlay hidden">
     <div class="gif-maker-modal">
       <iframe id="gif-maker-iframe" class="gif-maker-iframe" title="製作 GIF 動圖"></iframe>
+    </div>
+  </div>
+  <!-- 外框去背與定位外掛程式視窗容器 -->
+  <div id="frame-editor-overlay" class="frame-editor-overlay hidden">
+    <div class="frame-editor-modal">
+      <iframe id="frame-editor-iframe" class="frame-editor-iframe" title="頭框去背與定位"></iframe>
     </div>
   </div>
   
@@ -2788,6 +2820,35 @@
       if (e.target.id === "gif-maker-overlay") closeGifMakerModal();
     };
 
+    let frameEditorCallback = null;
+
+    function openFrameEditorModal(onComplete) {
+      frameEditorCallback = onComplete;
+      const overlay = document.getElementById("frame-editor-overlay");
+      const iframe = document.getElementById("frame-editor-iframe");
+      const g = getGuardianForDisplay(state.currentGuardianId);
+      const basePath = window.location.pathname.endsWith("/") || window.location.pathname.endsWith(".html")
+        ? window.location.href
+        : `${window.location.origin}${window.location.pathname}/`;
+      const editorUrl = new URL("frame-editor.html", basePath);
+      editorUrl.searchParams.set("theme", g.color || "#3b82f6");
+      editorUrl.searchParams.set("t", String(Date.now()));
+      iframe.src = editorUrl.toString();
+      overlay.classList.remove("hidden");
+    }
+
+    function closeFrameEditorModal() {
+      const overlay = document.getElementById("frame-editor-overlay");
+      const iframe = document.getElementById("frame-editor-iframe");
+      overlay.classList.add("hidden");
+      iframe.src = "about:blank";
+      frameEditorCallback = null;
+    }
+
+    document.getElementById("frame-editor-overlay").onclick = (e) => {
+      if (e.target.id === "frame-editor-overlay") closeFrameEditorModal();
+    };
+
     window.addEventListener("message", (e) => {
       const data = e.data;
       if (!data || typeof data !== "object") return;
@@ -2797,9 +2858,15 @@
         const cb = gifMakerCallback;
         closeGifMakerModal();
         if (typeof cb === "function") cb(data.dataUrl);
+      } else if (data.type === "FRAME_EDITOR_CLOSE") {
+        closeFrameEditorModal();
+      } else if (data.type === "FRAME_EDITOR_RESULT" && typeof data.dataUrl === "string") {
+        const cb = frameEditorCallback;
+        closeFrameEditorModal();
+        if (typeof cb === "function") cb(data.dataUrl);
       }
     });
-    
+
     // === 外框圖片處理（GIF 直接保留動圖，其餘格式壓縮為透明 WebP）===
     function compressFrameImageFile(file) {
       return new Promise((resolve, reject) => {
@@ -3260,7 +3327,6 @@
               showToast("頭貼更換失敗，請重試");
             }
           };
-;
         };
         img.src = ev.target.result;
       };
@@ -4174,7 +4240,6 @@
       const customLevels = Object.keys(customFrames).map(Number).filter((n) => !isNaN(n));
       const maxLevel = Math.max(20, ...customLevels);
       const nextLevel = maxLevel + 1;
-      let uploadTargetLevel = nextLevel;
 
       let gridHTML = "";
       for (let i = 1; i <= maxLevel; i++) {
@@ -4211,7 +4276,6 @@
         <p style="text-align:center; font-size:11px; color:#9ca3af; margin:0 0 14px;">
           點擊任一外框可上傳圖片替換（支援去背 PNG / WebP / GIF 動圖，GIF 限 2MB 內）
         </p>
-        <input type="file" id="m-custom-frame-input" accept="image/gif,image/png,image/webp,image/*" class="hidden" />
         <div class="frames-overview-grid">
           ${gridHTML}
         </div>
@@ -4229,8 +4293,6 @@
           <button class="btn btn-primary" id="m-lvl-confirm">確認關閉</button>
         </div>`);
 
-      const fileInput = document.getElementById("m-custom-frame-input");
-
       // 點擊各級數外框卡片開啟大圖預覽
       document.querySelectorAll(".frame-overview-card[data-lvl]").forEach((card) => {
         card.onclick = () => {
@@ -4241,27 +4303,23 @@
 
       // 點擊「＋」新增下一級自訂外框
       document.getElementById("btn-add-custom-frame").onclick = () => {
-        uploadTargetLevel = nextLevel;
-        fileInput.value = "";
-        fileInput.click();
-      };
-
-      fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-          const webpBase64 = await compressFrameImageFile(file);
-          await set(ref(db, `${ROOT_PATH}/customFrames/${uploadTargetLevel}`), {
-            level: uploadTargetLevel,
-            name: uploadTargetLevel > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[uploadTargetLevel - 1],
-            image: webpBase64,
-            timestamp: Date.now()
-          });
-          showToast(`已更新 LVL ${uploadTargetLevel} 外框！`);
-          openLevelFramesModal();
-        } catch (err) {
-          showToast(err?.message || "外框上傳失敗，請重試");
-        }
+        openFrameEditorModal(async (dataUrl) => {
+          try {
+            const frameData = {
+              level: nextLevel,
+              name: "自訂外框",
+              image: dataUrl,
+              timestamp: Date.now()
+            };
+            await set(ref(db, `${ROOT_PATH}/customFrames/${nextLevel}`), frameData);
+            if (!state.dbData.customFrames) state.dbData.customFrames = {};
+            state.dbData.customFrames[nextLevel] = frameData;
+            showToast(`已新增 LVL ${nextLevel} 外框！`);
+            openLevelFramesModal();
+          } catch (err) {
+            showToast(err?.message || "外框上傳失敗，請重試");
+          }
+        });
       };
 
       // 點擊右上角 × 恢復預設或刪除自訂外框
@@ -4313,43 +4371,35 @@
           <div style="font-size:13px; color:#6b7280; margin-top:6px;">${frameName}</div>
         </div>
         <p style="text-align:center; font-size:12px; color:#9ca3af; margin:0 0 4px;">
-          支援去背 PNG / WebP / GIF 動圖（GIF 限 2MB 內）
+          點擊「上傳新頭框」開啟去背與定位工具（支援靜態圖與 GIF 動圖，限 2MB 內）
         </p>
-        <input type="file" id="m-preview-frame-input" accept="image/gif,image/png,image/webp,image/*" class="hidden" />
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-preview-back">返回</button>
           <button class="btn btn-primary" id="m-preview-upload">上傳新頭框</button>
         </div>`);
 
-      const previewFileInput = document.getElementById("m-preview-frame-input");
-
       document.getElementById("m-preview-back").onclick = openLevelFramesModal;
       document.getElementById("m-preview-upload").onclick = () => {
-        previewFileInput.value = "";
-        previewFileInput.click();
-      };
-
-      previewFileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        try {
-          const webpBase64 = await compressFrameImageFile(file);
-          const frameData = {
-            level: targetLvl,
-            name: targetLvl > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1],
-            image: webpBase64,
-            timestamp: Date.now()
-          };
-          await set(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`), frameData);
-          if (!state.dbData.customFrames) state.dbData.customFrames = {};
-          state.dbData.customFrames[targetLvl] = frameData;
-          showToast(`已更新 LVL ${targetLvl} 外框！`);
-          openFramePreviewModal(targetLvl);
-        } catch (err) {
-          showToast(err?.message || "外框上傳失敗，請重試");
-        }
+        openFrameEditorModal(async (dataUrl) => {
+          try {
+            const frameData = {
+              level: targetLvl,
+              name: targetLvl > 20 ? "自訂外框" : FRAME_LEVEL_NAMES[targetLvl - 1],
+              image: dataUrl,
+              timestamp: Date.now()
+            };
+            await set(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`), frameData);
+            if (!state.dbData.customFrames) state.dbData.customFrames = {};
+            state.dbData.customFrames[targetLvl] = frameData;
+            showToast(`已更新 LVL ${targetLvl} 外框！`);
+            openFramePreviewModal(targetLvl);
+          } catch (err) {
+            showToast(err?.message || "外框上傳失敗，請重試");
+          }
+        });
       };
     }
+
 
     // 新增關主 Modal
     function openAddGuardianModal() {
@@ -5429,15 +5479,28 @@
 
     // 輕量本機快取（關主、寶貝、設定）
     function saveCoreCache() {
+      const payload = {
+        guardians: state.dbData.guardians,
+        kids: state.dbData.kids,
+        deletedDemoKids: state.dbData.deletedDemoKids,
+        settings: state.dbData.settings
+      };
       try {
-        localStorage.setItem(CORE_CACHE_KEY, JSON.stringify({
-          guardians: state.dbData.guardians,
-          kids: state.dbData.kids,
-          deletedDemoKids: state.dbData.deletedDemoKids,
-          settings: state.dbData.settings
-        }));
-      } catch (e) {}
+        localStorage.setItem(CORE_CACHE_KEY, JSON.stringify(payload));
+      } catch (e) {
+        // 若因 GIF 頭像過大超出 localStorage 上限，改為略過大型 Base64 頭像後再快取
+        try {
+          const lightKids = {};
+          Object.entries(state.dbData.kids || {}).forEach(([id, k]) => {
+            if (!k) return;
+            const isLargeAvatar = typeof k.avatar === "string" && k.avatar.length > 150000;
+            lightKids[id] = isLargeAvatar ? { ...k, avatar: "" } : k;
+          });
+          localStorage.setItem(CORE_CACHE_KEY, JSON.stringify({ ...payload, kids: lightKids }));
+        } catch (err) {}
+      }
     }
+
 
     // 大容量本機快取（外框 GIF、自訂圖章，使用 IndexedDB）
     function openMediaDB() {
