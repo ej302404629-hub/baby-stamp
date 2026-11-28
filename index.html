@@ -812,6 +812,96 @@
       justify-content: space-between;
       gap: 10px;
     }
+    .stamp-style-btn-left {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .stamp-style-btn-preview {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .stamp-picker-section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #4b5563;
+      margin: 0 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .preset-stamp-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .preset-stamp-row.is-dimmed {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .preset-stamp-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+    .preset-stamp-icon {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
+      position: relative;
+      border: 3px solid transparent;
+      padding: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f3f4f6;
+      transition: transform 0.12s, border-color 0.2s;
+    }
+    .preset-stamp-card:active .preset-stamp-icon {
+      transform: scale(0.94);
+    }
+    .preset-stamp-icon.active-stamp {
+      border-color: var(--theme-color);
+      background: #eff6ff;
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.22);
+    }
+    .preset-stamp-icon.active-stamp::after {
+      content: "✓";
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--theme-color);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #fff;
+    }
+    .preset-stamp-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #4b5563;
+      line-height: 1.1;
+    }
+    .stamp-picker-divider {
+      border-top: 1px solid #e5e7eb;
+      margin: 12px 0 12px;
+    }
 
     /* 自訂圖章視窗與剪裁器 */
     .custom-stamp-grid {
@@ -2564,6 +2654,42 @@
         <path d="M28 28 C24 31 23 36 24 41" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.55" />
       </svg>`;
     }
+    function getSmileyStarSVG(color) {
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <!-- 五個角形狀不規則的手繪感笑臉星星 -->
+        <path d="M37 33 Q44 8, 49 10 Q55 12, 60 32 Q89 29, 91 36 Q92 43, 69 54 Q82 84, 76 88 Q70 91, 51 73 Q27 87, 22 81 Q18 76, 31 55 Q9 44, 11 37 Q13 31, 37 33 Z" fill="${color}" />
+        <path d="M44 21 Q46 16, 49 18" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" opacity="0.6" />
+        <circle cx="40" cy="48" r="5" fill="#ffffff"/>
+        <circle cx="41" cy="48.5" r="2.7" fill="#1f2937"/>
+        <circle cx="42" cy="47.2" r="1" fill="#ffffff"/>
+        <circle cx="60" cy="49" r="5" fill="#ffffff"/>
+        <circle cx="61" cy="49.5" r="2.7" fill="#1f2937"/>
+        <circle cx="62" cy="48.2" r="1" fill="#ffffff"/>
+        <ellipse cx="33" cy="56" rx="4.2" ry="2.6" fill="#fda4af" opacity="0.88"/>
+        <ellipse cx="66" cy="57" rx="4.2" ry="2.6" fill="#fda4af" opacity="0.88"/>
+        <path d="M43 57 Q50 66 57 57 Z" fill="#ffffff" stroke="#1f2937" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>`;
+    }
+
+    function getCuteRabbitSVG(color) {
+      return `<svg viewBox="0 0 100 100" width="100%" height="100%">
+        <circle cx="50" cy="50" r="47" fill="${color}" opacity="0.2"/>
+        <circle cx="50" cy="50" r="45" fill="none" stroke="${color}" stroke-width="4"/>
+        <ellipse cx="38" cy="27" rx="8.5" ry="19" transform="rotate(-10 38 27)" fill="#ffffff" stroke="${color}" stroke-width="2.8"/>
+        <ellipse cx="38.5" cy="28" rx="4.2" ry="12.5" transform="rotate(-10 38.5 28)" fill="#fbcfe8"/>
+        <ellipse cx="62" cy="27" rx="8.5" ry="19" transform="rotate(14 62 27)" fill="#ffffff" stroke="${color}" stroke-width="2.8"/>
+        <ellipse cx="61.5" cy="28" rx="4.2" ry="12.5" transform="rotate(14 61.5 28)" fill="#fbcfe8"/>
+        <ellipse cx="50" cy="61" rx="28" ry="24" fill="#ffffff" stroke="${color}" stroke-width="2.8"/>
+        <circle cx="39" cy="58" r="4.2" fill="#1f2937"/>
+        <circle cx="40.4" cy="56.5" r="1.4" fill="#ffffff"/>
+        <circle cx="61" cy="58" r="4.2" fill="#1f2937"/>
+        <circle cx="62.4" cy="56.5" r="1.4" fill="#ffffff"/>
+        <ellipse cx="30" cy="65" rx="5" ry="3.2" fill="#fbcfe8" opacity="0.9"/>
+        <ellipse cx="70" cy="65" rx="5" ry="3.2" fill="#fbcfe8" opacity="0.9"/>
+        <polygon points="46.5,63 53.5,63 50,67" fill="#f472b6"/>
+        <path d="M43.5 70 Q46.8 74 50 69.5 Q53.2 74 56.5 70" fill="none" stroke="#9d174d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    }
 
     function getCryingFaceSVG() {
       return `<svg viewBox="0 0 100 100" width="84%" height="84%">
@@ -2722,6 +2848,12 @@
       if (stamp.mode === "heart") {
         return getHeartSVG(g.color);
       }
+      if (stamp.mode === "star") {
+        return getSmileyStarSVG(g.color);
+      }
+      if (stamp.mode === "rabbit") {
+        return getCuteRabbitSVG(g.color);
+      }
       if (stamp.mode === "custom") {
         const csObj = stamp.customStampId && state.dbData.customStamps ? state.dbData.customStamps[stamp.customStampId] : null;
         const gSet = getGuardianStampSettings(stamp.guardianId);
@@ -2732,6 +2864,17 @@
       }
       return getGuardianSVG(g);
     }
+
+    function renderCurrentStampPreview(guardianId = state.currentGuardianId) {
+      const gSettings = getGuardianStampSettings(guardianId);
+      return renderStampGraphic({
+        guardianId,
+        mode: gSettings.stampMode,
+        customStampId: gSettings.selectedCustomStampId,
+        customImage: gSettings.customStampImage
+      });
+    }
+
 
     // === 取得合併後的資料 ===
     function getAllGuardians() {
@@ -4631,31 +4774,19 @@
     // 齒輪設定 Modal
     function openSettingsModal() {
       exitEditMode();
-      const gSettings = getGuardianStampSettings(state.currentGuardianId);
-      const currentMode = gSettings.stampMode;
-      const customImg = gSettings.customStampImage;
+      const currentStampPreview = renderCurrentStampPreview(state.currentGuardianId);
       openModal(`
         <h3 class="modal-title">設定選單</h3>
         <button class="menu-list-btn" id="set-switch-guardian"><span>切換關主</span><span>›</span></button>
         <button class="menu-list-btn" id="set-switch-kid"><span>切換寶貝</span><span>›</span></button>
         <button class="menu-list-btn" id="set-add-task"><span>添加任務</span><span>＋</span></button>
-        <div class="setting-select-box">
-          <div class="setting-select-row">
-            <span>蓋章模式</span>
-            <select id="set-stamp-mode-select" class="setting-select">
-              <option value="avatar" ${currentMode === "avatar" ? "selected" : ""}>關主圖示</option>
-              <option value="fingerprint" ${currentMode === "fingerprint" ? "selected" : ""}>指紋模式</option>
-              <option value="heart" ${currentMode === "heart" ? "selected" : ""}>愛心模式</option>
-              <option value="custom" ${currentMode === "custom" ? "selected" : ""}>上傳圖案</option>
-            </select>
-          </div>
-          <div id="custom-stamp-manage-row" class="custom-stamp-upload ${currentMode === "custom" ? "" : "hidden"}">
-            <div style="display:flex; align-items:center; gap:8px;">
-              ${customImg ? `<img src="${customImg}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--theme-color);" />` : '<span style="font-size:12px;color:#6b7280;">尚未選擇圖章</span>'}
-            </div>
-            <button class="btn btn-primary" style="padding:8px 14px; font-size:14px;" id="btn-open-custom-stamps">開啟自訂圖章</button>
-          </div>
-        </div>
+        <button class="menu-list-btn" id="set-stamp-style">
+          <span class="stamp-style-btn-left">
+            <span>圖章樣式</span>
+            <span class="stamp-style-btn-preview">${currentStampPreview}</span>
+          </span>
+          <span>›</span>
+        </button>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-close">關閉</button>
         </div>`);
@@ -4664,25 +4795,10 @@
       document.getElementById("set-switch-guardian").onclick = openSwitchGuardianModal;
       document.getElementById("set-switch-kid").onclick = openSwitchKidModal;
       document.getElementById("set-add-task").onclick = openAddTaskModal;
-
-      const modeSelect = document.getElementById("set-stamp-mode-select");
-      const manageRow = document.getElementById("custom-stamp-manage-row");
-      const modeNames = { avatar: "關主圖示", fingerprint: "指紋模式", heart: "愛心模式", custom: "上傳圖案" };
-
-      modeSelect.onchange = () => {
-        const nextMode = modeSelect.value;
-        set(ref(db, `${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`), nextMode);
-        manageRow.classList.toggle("hidden", nextMode !== "custom");
-        showToast(`已切換為：${modeNames[nextMode]}`);
-        if (nextMode === "custom") {
-          openCustomStampsModal();
-        }
-      };
-
-      document.getElementById("btn-open-custom-stamps").onclick = openCustomStampsModal;
+      document.getElementById("set-stamp-style").onclick = openCustomStampsModal;
     }
 
-    // === 自訂圖章視窗 ===
+    // === 選擇圖章視窗（整合預設圖章與自訂圖章）===
     function openCustomStampsModal() {
       runModalCleanup();
       state.customStampEditMode = false;
@@ -4696,17 +4812,35 @@
       const stampsList = Object.values(state.dbData.customStamps || {})
         .filter((item) => item && !item.hidden)
         .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      const g = getGuardianForDisplay(state.currentGuardianId);
       const gSettings = getGuardianStampSettings(state.currentGuardianId);
+      const currentMode = gSettings.stampMode || "avatar";
       const selectedId = gSettings.selectedCustomStampId;
       const selectedImg = gSettings.customStampImage;
       const isEditing = state.customStampEditMode;
 
+      const presetItems = [
+        { mode: "avatar", label: "關主", svg: getGuardianSVG(g) },
+        { mode: "fingerprint", label: "指紋", svg: getFingerprintSVG(g.color) },
+        { mode: "heart", label: "愛心", svg: getHeartSVG(g.color) },
+        { mode: "star", label: "星星", svg: getSmileyStarSVG(g.color) },
+        { mode: "rabbit", label: "兔子", svg: getCuteRabbitSVG(g.color) }
+      ];
+
       const box = document.getElementById("modal-content");
       box.innerHTML = `
-        <h3 class="modal-title">自訂圖章</h3>
-        <p style="text-align:center; font-size:13px; color:#6b7280; margin:-8px 0 10px;">
-          ${isEditing ? `編輯模式：已選取 ${state.customStampEditSelectedIds.size} 個圖章` : "點選圖章即可使用，長按圖章可進入編輯刪除"}
-        </p>
+        <h3 class="modal-title">選擇圖章</h3>
+        <div class="stamp-picker-section-title">
+          <span>預設圖章</span>
+        </div>
+        <div class="preset-stamp-row ${isEditing ? "is-dimmed" : ""}" id="preset-stamp-row"></div>
+        <div class="stamp-picker-divider"></div>
+        <div class="stamp-picker-section-title">
+          <span>自訂圖章</span>
+          <span style="font-size:11px; font-weight:600; color:#6b7280;">
+            ${isEditing ? `編輯模式：已選 ${state.customStampEditSelectedIds.size} 個` : "點選使用 · 長按可刪除"}
+          </span>
+        </div>
         <input type="file" id="cs-upload-input" accept="image/*" class="hidden" />
         <div class="custom-stamp-grid" id="cs-grid"></div>
         <div class="modal-actions">
@@ -4716,6 +4850,24 @@
             : `<button class="btn btn-secondary" id="cs-back-settings">返回設定</button>
                <button class="btn btn-primary" id="cs-done">完成</button>`}
         </div>`;
+
+      const presetRow = document.getElementById("preset-stamp-row");
+      presetItems.forEach((preset) => {
+        const isPresetActive = !isEditing && currentMode === preset.mode;
+        const card = document.createElement("div");
+        card.className = "preset-stamp-card";
+        card.innerHTML = `
+          <div class="preset-stamp-icon ${isPresetActive ? "active-stamp" : ""}">
+            ${preset.svg}
+          </div>
+          <span class="preset-stamp-label">${preset.label}</span>`;
+        card.onclick = () => {
+          if (isEditing) return;
+          set(ref(db, `${ROOT_PATH}/settings/guardianModes/${state.currentGuardianId}/stampMode`), preset.mode);
+          showToast(`已切換為：${preset.label}圖章`);
+        };
+        presetRow.appendChild(card);
+      });
 
       const grid = document.getElementById("cs-grid");
       const fileInput = document.getElementById("cs-upload-input");
@@ -4727,7 +4879,7 @@
       };
 
       stampsList.forEach((item) => {
-        const isActive = !isEditing && (item.id === selectedId || (!selectedId && selectedImg && item.image === selectedImg));
+        const isActive = !isEditing && currentMode === "custom" && (item.id === selectedId || (!selectedId && selectedImg && item.image === selectedImg));
         const isEditSel = isEditing && state.customStampEditSelectedIds.has(item.id);
         const cell = document.createElement("div");
         cell.className = `custom-stamp-item ${isActive ? "active-stamp" : ""} ${isEditing ? "edit-mode-item" : ""} ${isEditSel ? "edit-selected" : ""}`;
@@ -4835,6 +4987,9 @@
           if (gSet && deleteSet.has(gSet.selectedCustomStampId)) {
             updates[`${ROOT_PATH}/settings/guardianModes/${gid}/selectedCustomStampId`] = nextId;
             updates[`${ROOT_PATH}/settings/guardianModes/${gid}/customStampImage`] = null;
+            if (!nextId && gSet.stampMode === "custom") {
+              updates[`${ROOT_PATH}/settings/guardianModes/${gid}/stampMode`] = "avatar";
+            }
           }
         });
 
