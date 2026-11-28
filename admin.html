@@ -443,7 +443,7 @@
       <div id="tab-users" class="hidden">
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">手動新增 / 綁定帳號到家庭</h2>
+            <h2 class="card-title">手動新增 / 綁定帳號到家庭（支援多家庭）</h2>
           </div>
           <div class="form-row">
             <div class="form-field">
@@ -455,13 +455,13 @@
               <input type="text" id="bind-name-input" class="input" placeholder="例如：爸爸、媽媽" />
             </div>
             <div class="form-field">
-              <label>指定家庭</label>
+              <label>加入指定家庭</label>
               <select id="bind-family-select" class="select"></select>
             </div>
-            <button class="btn btn-primary" id="btn-manual-bind">確認綁定</button>
+            <button class="btn btn-primary" id="btn-manual-bind">＋ 加入綁定</button>
           </div>
           <p style="margin:0; font-size:12px; color:var(--sub);">
-            小提示：剛登入後台時，可點右上角「複製 UID」貼到這裡，立刻將自己的 Google 帳號綁定到舊家庭 <span class="mono">0000</span>。
+            支援同一組 Google UID 綁定多個家庭；點右上角「複製 UID」即可將自己的帳號同時綁定至多個家庭。
           </p>
         </div>
 
@@ -475,9 +475,8 @@
                 <tr>
                   <th>名稱 / Email</th>
                   <th>UID</th>
-                  <th>目前綁定家庭</th>
-                  <th>角色</th>
-                  <th>切換綁定 / 操作</th>
+                  <th>已綁定家庭（點 × 可個別解除）</th>
+                  <th>新增綁定家庭</th>
                 </tr>
               </thead>
               <tbody id="users-tbody"></tbody>
@@ -673,6 +672,17 @@
       return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
     }
 
+    function getUserFamilyIds(u) {
+      const setIds = new Set();
+      if (u && u.families && typeof u.families === "object") {
+        Object.keys(u.families).forEach((fid) => {
+          if (u.families[fid]) setIds.add(fid);
+        });
+      }
+      if (u && u.familyId) setIds.add(u.familyId);
+      return [...setIds];
+    }
+
     // === 認證與權限控制 ===
     function detachListeners() {
       if (typeof state.unsubFamilies === "function") { state.unsubFamilies(); state.unsubFamilies = null; }
@@ -796,7 +806,7 @@
       const famIds = Object.keys(state.families).sort();
       const optionsHTML = famIds.length > 0
         ? famIds.map((id) => {
-            const name = state.families[id]?.meta?.name || "未命名家庭";
+            const name = state.families[id]?.meta?.name || (id === "0000" ? "預設舊家庭" : "未命名家庭");
             return `<option value="${escapeHTML(id)}">${escapeHTML(id)}（${escapeHTML(name)}）</option>`;
           }).join("")
         : `<option value="">（目前無家庭）</option>`;
@@ -807,6 +817,46 @@
         sel.innerHTML = optionsHTML;
         if (prev && famIds.includes(prev)) sel.value = prev;
       });
+    }
+
+    // === 多家庭綁定／解綁輔助函式 ===
+    async function addUserToFamily(uid, targetFamilyId, extraProfile = {}) {
+      if (!uid || !targetFamilyId) return;
+      const updates = {};
+      const existing = state.users[uid] || {};
+      const famName = state.families[targetFamilyId]?.meta?.name || (targetFamilyId === "0000" ? "預設家庭" : targetFamilyId);
+      const now = Date.now();
+
+      if (extraProfile.name) updates[`users/${uid}/name`] = extraProfile.name;
+      if (extraProfile.email) updates[`users/${uid}/email`] = extraProfile.email;
+      updates[`users/${uid}/families/${targetFamilyId}`] = {
+        name: famName,
+        role: extraProfile.role || existing.families?.[targetFamilyId]?.role || "member",
+        joinedAt: existing.families?.[targetFamilyId]?.joinedAt || now
+      };
+      if (!existing.lastFamilyId && !existing.familyId) {
+        updates[`users/${uid}/lastFamilyId`] = targetFamilyId;
+        updates[`users/${uid}/familyId`] = targetFamilyId;
+      }
+      updates[`users/${uid}/updatedAt`] = now;
+      updates[`families/${targetFamilyId}/members/${uid}`] = true;
+
+      await update(ref(db), updates);
+    }
+
+    async function removeUserFromFamily(uid, targetFamilyId) {
+      const updates = {};
+      const u = state.users[uid] || {};
+      const remaining = getUserFamilyIds(u).filter((fid) => fid !== targetFamilyId);
+      const nextFam = remaining[0] || null;
+
+      updates[`families/${targetFamilyId}/members/${uid}`] = null;
+      updates[`users/${uid}/families/${targetFamilyId}`] = null;
+      if (u.lastFamilyId === targetFamilyId) updates[`users/${uid}/lastFamilyId`] = nextFam;
+      if (u.familyId === targetFamilyId) updates[`users/${uid}/familyId`] = nextFam;
+      updates[`users/${uid}/updatedAt`] = Date.now();
+
+      await update(ref(db), updates);
     }
 
     // === 1. 家庭與成員管理 ===
@@ -875,13 +925,25 @@
           if (nextName === null) return;
           const trimmed = nextName.trim();
           if (!trimmed) return showToast("名稱不能為空");
-          await set(ref(db, `families/${famId}/meta/name`), trimmed);
+          const updates = {};
+          updates[`families/${famId}/meta/name`] = trimmed;
+          memberUids.forEach((uid) => {
+            if (state.users[uid]?.families?.[famId]) {
+              updates[`users/${uid}/families/${famId}/name`] = trimmed;
+            }
+          });
+          await update(ref(db), updates);
           showToast("已更新家庭名稱");
         };
 
         card.querySelector('[data-act="reset-code"]').onclick = async () => {
+          const oldCode = meta.inviteCode;
           const code = randomInviteCode();
-          await set(ref(db, `families/${famId}/meta/inviteCode`), code);
+          const updates = {};
+          if (oldCode) updates[`inviteCodes/${oldCode}`] = null;
+          updates[`families/${famId}/meta/inviteCode`] = code;
+          updates[`inviteCodes/${code}`] = famId;
+          await update(ref(db), updates);
           showToast(`已重設邀請碼為：${code}`);
         };
 
@@ -895,9 +957,14 @@
           if (check !== famId) return showToast("已取消刪除");
           const updates = {};
           updates[`families/${famId}`] = null;
+          if (meta.inviteCode) updates[`inviteCodes/${meta.inviteCode}`] = null;
           Object.entries(state.users).forEach(([uid, u]) => {
-            if (u && u.familyId === famId) {
-              updates[`users/${uid}/familyId`] = null;
+            const fids = getUserFamilyIds(u);
+            if (fids.includes(famId)) {
+              const nextFam = fids.find((id) => id !== famId) || null;
+              updates[`users/${uid}/families/${famId}`] = null;
+              if (u.lastFamilyId === famId) updates[`users/${uid}/lastFamilyId`] = nextFam;
+              if (u.familyId === famId) updates[`users/${uid}/familyId`] = nextFam;
             }
           });
           await update(ref(db), updates);
@@ -908,12 +975,7 @@
           btn.onclick = async () => {
             const targetUid = btn.dataset.kickUid;
             if (!confirm(`確定要將帳號 ${targetUid} 移出家庭 ${famId} 嗎？`)) return;
-            const updates = {};
-            updates[`families/${famId}/members/${targetUid}`] = null;
-            if (state.users[targetUid]?.familyId === famId) {
-              updates[`users/${targetUid}/familyId`] = null;
-            }
-            await update(ref(db), updates);
+            await removeUserFromFamily(targetUid, famId);
             showToast("已將成員移出家庭");
           };
         });
@@ -936,11 +998,15 @@
       }
 
       const code = randomInviteCode();
-      await set(ref(db, `families/${famId}/meta`), {
+      const updates = {};
+      updates[`families/${famId}/meta`] = {
         name: famName,
         inviteCode: code,
+        noDefaultGuardians: true,
         createdAt: Date.now()
-      });
+      };
+      updates[`inviteCodes/${code}`] = famId;
+      await update(ref(db), updates);
       idInput.value = "";
       nameInput.value = "";
       showToast(`已建立家庭 ${famId}（邀請碼 ${code}）`);
@@ -952,29 +1018,6 @@
     };
 
     // === 2. 帳號綁定總表 ===
-    async function bindUserToFamily(uid, targetFamilyId, extraProfile = {}) {
-      const updates = {};
-      const existing = state.users[uid] || {};
-      const oldFamilyId = existing.familyId;
-
-      if (oldFamilyId && oldFamilyId !== targetFamilyId) {
-        updates[`families/${oldFamilyId}/members/${uid}`] = null;
-      }
-
-      updates[`users/${uid}`] = {
-        ...existing,
-        ...extraProfile,
-        familyId: targetFamilyId || null,
-        updatedAt: Date.now()
-      };
-
-      if (targetFamilyId) {
-        updates[`families/${targetFamilyId}/members/${uid}`] = true;
-      }
-
-      await update(ref(db), updates);
-    }
-
     document.getElementById("btn-manual-bind").onclick = async () => {
       const uid = document.getElementById("bind-uid-input").value.trim();
       const name = document.getElementById("bind-name-input").value.trim();
@@ -990,10 +1033,10 @@
         extra.role = "owner";
       }
 
-      await bindUserToFamily(uid, famId, extra);
+      await addUserToFamily(uid, famId, extra);
       document.getElementById("bind-uid-input").value = "";
       document.getElementById("bind-name-input").value = "";
-      showToast(`已將帳號綁定至家庭 ${famId}`);
+      showToast(`已將帳號加入家庭 ${famId}`);
     };
 
     function renderUsersTable() {
@@ -1002,18 +1045,18 @@
       const userEntries = Object.entries(state.users);
 
       if (userEntries.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--sub); padding:24px;">目前尚未有已記錄的帳號（可使用上方表單手動綁定自己的 UID）</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--sub); padding:24px;">目前尚未有已記錄的帳號（可使用上方表單手動綁定自己的 UID）</td></tr>`;
         return;
       }
 
       tbody.innerHTML = "";
       userEntries.forEach(([uid, u]) => {
         const tr = document.createElement("tr");
-        const curFam = u?.familyId || "";
-        const famOpts = [
-          `<option value="">（解除綁定）</option>`,
-          ...famIds.map((fid) => `<option value="${escapeHTML(fid)}" ${fid === curFam ? "selected" : ""}>${escapeHTML(fid)}（${escapeHTML(state.families[fid]?.meta?.name || "未命名")}）</option>`)
-        ].join("");
+        const boundFids = getUserFamilyIds(u);
+        const availableToAdd = famIds.filter((fid) => !boundFids.includes(fid));
+        const famOpts = availableToAdd.length > 0
+          ? availableToAdd.map((fid) => `<option value="${escapeHTML(fid)}">${escapeHTML(fid)}（${escapeHTML(state.families[fid]?.meta?.name || (fid === "0000" ? "預設舊家庭" : "未命名"))}）</option>`).join("")
+          : `<option value="">（已綁定全部）</option>`;
 
         tr.innerHTML = `
           <td>
@@ -1021,20 +1064,41 @@
             <div style="font-size:11px; color:var(--sub);">${escapeHTML(u?.email || "-")}</div>
           </td>
           <td><span class="mono">${escapeHTML(uid)}</span></td>
-          <td>${curFam ? `<span class="badge badge-blue">${escapeHTML(curFam)}</span>` : `<span class="badge badge-warn">未綁定</span>`}</td>
-          <td>${escapeHTML(u?.role || "member")}</td>
+          <td>
+            <div class="member-chips" style="margin-top:0;">
+              ${boundFids.length === 0
+                ? `<span class="badge badge-warn">未綁定</span>`
+                : boundFids.map((fid) => {
+                    const fName = state.families[fid]?.meta?.name || u?.families?.[fid]?.name || fid;
+                    return `<span class="member-chip">
+                      <span>${escapeHTML(fName)} <span class="mono">${escapeHTML(fid)}</span></span>
+                      <button type="button" data-unbind-fid="${escapeHTML(fid)}" title="解除此家庭綁定">×</button>
+                    </span>`;
+                  }).join("")}
+            </div>
+          </td>
           <td>
             <div style="display:flex; gap:6px; align-items:center;">
-              <select class="select" style="width:auto; padding:5px 8px; font-size:12px;">${famOpts}</select>
-              <button class="btn btn-primary btn-sm">套用</button>
+              <select class="select" style="width:auto; padding:5px 8px; font-size:12px;" ${availableToAdd.length === 0 ? "disabled" : ""}>${famOpts}</select>
+              <button class="btn btn-primary btn-sm" data-add-bind ${availableToAdd.length === 0 ? "disabled" : ""}>＋ 加入</button>
             </div>
           </td>`;
 
+        tr.querySelectorAll("[data-unbind-fid]").forEach((btn) => {
+          btn.onclick = async () => {
+            const targetFid = btn.dataset.unbindFid;
+            if (!confirm(`確定要解除此帳號與家庭「${targetFid}」的綁定嗎？`)) return;
+            await removeUserFromFamily(uid, targetFid);
+            showToast(`已解除綁定：${targetFid}`);
+          };
+        });
+
         const selectEl = tr.querySelector("select");
-        tr.querySelector("button").onclick = async () => {
+        tr.querySelector("[data-add-bind]").onclick = async () => {
           const nextFam = selectEl.value;
-          await bindUserToFamily(uid, nextFam);
-          showToast(nextFam ? `已改綁定至 ${nextFam}` : "已解除家庭綁定");
+          if (!nextFam) return;
+          await addUserToFamily(uid, nextFam);
+          showToast(`已加入綁定：${nextFam}`);
         };
 
         tbody.appendChild(tr);
@@ -1078,7 +1142,12 @@
         const existsMsg = state.families[targetId] ? `（將完全覆蓋現有的 ${targetId}！）` : `（將建立新家庭 ${targetId}）`;
         if (!confirm(`確定要將備份檔還原至家庭「${targetId}」嗎？${existsMsg}`)) return;
 
-        await set(ref(db, `families/${targetId}`), parsed);
+        const updates = {};
+        updates[`families/${targetId}`] = parsed;
+        if (parsed.meta?.inviteCode) {
+          updates[`inviteCodes/${parsed.meta.inviteCode}`] = targetId;
+        }
+        await update(ref(db), updates);
         document.getElementById("import-file-input").value = "";
         showToast(`已成功還原至家庭 ${targetId}`);
       } catch (err) {
@@ -1114,11 +1183,19 @@
 
         const updates = {};
         updates[`families/${dstId}`] = srcData;
+        if (srcData.meta?.inviteCode) {
+          updates[`inviteCodes/${srcData.meta.inviteCode}`] = dstId;
+        }
 
         if (updateUsers) {
           Object.entries(state.users).forEach(([uid, u]) => {
-            if (u && u.familyId === srcId) {
-              updates[`users/${uid}/familyId`] = dstId;
+            const fids = getUserFamilyIds(u);
+            if (fids.includes(srcId)) {
+              const famEntry = u?.families?.[srcId] || { name: srcData.meta?.name || dstId, role: u?.role || "member" };
+              updates[`users/${uid}/families/${dstId}`] = famEntry;
+              if (deleteSrc) updates[`users/${uid}/families/${srcId}`] = null;
+              if (u.lastFamilyId === srcId) updates[`users/${uid}/lastFamilyId`] = dstId;
+              if (u.familyId === srcId) updates[`users/${uid}/familyId`] = dstId;
             }
           });
         }

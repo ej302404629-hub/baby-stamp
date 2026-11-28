@@ -1684,7 +1684,7 @@
         </div>
         <button class="btn btn-secondary btn-block" id="btn-join-family" style="background:#10b981; color:#fff;">加入家庭</button>
       </div>
-
+      <button class="btn btn-primary btn-block hidden" style="margin-bottom:10px;" id="btn-setup-back">返回目前家庭</button>
       <button class="btn btn-secondary btn-block" id="btn-setup-logout">登出切換 Google 帳號</button>
     </section>
 
@@ -1694,6 +1694,7 @@
       <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色（長按可刪除）</p>
       <div class="guardian-grid" id="guardian-grid"></div>
       <button class="btn btn-primary btn-block" id="btn-confirm-guardian">確認進入</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:10px;" id="btn-guardian-switch-family">🏠 切換 / 新增家庭</button>      
       <button class="btn btn-secondary btn-block" style="margin-top:10px;" id="btn-guardian-logout">登出 Google 帳號</button>
     </section>
 
@@ -1887,6 +1888,7 @@
     // === 應用程式狀態 ===
     const state = {
       authUser: null,
+      userFamilies: {},
       dbData: { meta: {}, guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, rewards: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
       currentGuardianId: "",
       currentKidId: null,
@@ -5022,9 +5024,10 @@
       const famName = meta.name || (FAMILY_KEY === "0000" ? "預設家庭" : "我的家庭");
       const inviteCode = meta.inviteCode || "尚未設定";
       const userEmail = state.authUser?.email || "";
+      const famEntries = Object.entries(state.userFamilies || {});
 
       openModal(`
-        <h3 class="modal-title">🏠 家庭資訊與帳號</h3>
+        <h3 class="modal-title">🏠 家庭資訊與切換</h3>
         <p style="text-align:center; font-size:15px; font-weight:800; margin:0 0 4px;">${escapeHTML(famName)}</p>
         <p style="text-align:center; font-size:12px; color:#6b7280; margin:0 0 10px;">目前登入：${escapeHTML(userEmail)}</p>
         <div class="invite-code-box">
@@ -5032,10 +5035,43 @@
           <div class="invite-code-num">${escapeHTML(inviteCode)}</div>
           ${meta.inviteCode ? `<button class="btn btn-primary" id="btn-copy-invite" style="margin-top:10px; padding:8px 16px; font-size:13px;">複製邀請碼</button>` : ""}
         </div>
+        <div style="margin:14px 0 8px; font-size:13px; font-weight:800; color:#4b5563;">我的家庭列表（共 ${famEntries.length} 個）</div>
+        <div id="my-families-switch-list"></div>
+        <button class="btn btn-block" id="btn-add-another-family" style="margin-top:8px; background:#eff6ff; color:var(--theme-color); border:1.5px dashed var(--theme-color);">
+          ＋ 建立 / 加入其他家庭
+        </button>
         <div class="modal-actions">
           <button class="btn btn-danger" id="btn-modal-logout">登出帳號</button>
           <button class="btn btn-secondary" id="m-close">關閉</button>
         </div>`);
+
+      const listEl = document.getElementById("my-families-switch-list");
+      famEntries.forEach(([fid, info]) => {
+        const isCurrent = fid === FAMILY_KEY;
+        const displayName = isCurrent ? famName : (info?.name || (fid === "0000" ? "預設家庭" : fid));
+        const btn = document.createElement("button");
+        btn.className = "menu-list-btn";
+        btn.style.marginBottom = "8px";
+        btn.style.borderColor = isCurrent ? "var(--theme-color)" : "#e5e7eb";
+        btn.style.background = isCurrent ? "#eff6ff" : "#f9fafb";
+        btn.innerHTML = `
+          <span>${escapeHTML(displayName)}</span>
+          <span style="font-size:12px; color:${isCurrent ? "var(--theme-color)" : "#6b7280"};">${isCurrent ? "目前使用" : "點擊切換 ›"}</span>`;
+        btn.onclick = async () => {
+          if (isCurrent) return;
+          closeModal();
+          if (state.authUser) {
+            await update(ref(db, `users/${state.authUser.uid}`), {
+              lastFamilyId: fid,
+              familyId: fid,
+              updatedAt: Date.now()
+            });
+          }
+          showToast(`已切換至：${displayName}`);
+          startFamilySession(fid);
+        };
+        listEl.appendChild(btn);
+      });
 
       const copyBtn = document.getElementById("btn-copy-invite");
       if (copyBtn) {
@@ -5045,6 +5081,12 @@
             .catch(() => prompt("請手動複製邀請碼：", inviteCode));
         };
       }
+      document.getElementById("btn-add-another-family").onclick = () => {
+        closeModal();
+        document.getElementById("setup-user-info").textContent = `已登入：${userEmail}`;
+        document.getElementById("btn-setup-back").classList.toggle("hidden", !FAMILY_KEY);
+        showPage("family-setup");
+      };
       document.getElementById("btn-modal-logout").onclick = async () => {
         closeModal();
         await signOut(auth);
@@ -6121,6 +6163,10 @@
     };
     document.getElementById("btn-setup-logout").onclick = doSignOut;
     document.getElementById("btn-guardian-logout").onclick = doSignOut;
+    document.getElementById("btn-guardian-switch-family").onclick = openFamilyInfoModal;
+    document.getElementById("btn-setup-back").onclick = () => {
+      if (FAMILY_KEY) showPage("guardian");
+    };
 
     document.getElementById("btn-create-my-family").onclick = async () => {
       if (!state.authUser) return;
@@ -6129,6 +6175,7 @@
       const famId = `fam_${Math.random().toString(36).slice(2, 10)}`;
       const inviteCode = String(Math.floor(100000 + Math.random() * 900000));
       const user = state.authUser;
+      const now = Date.now();
 
       try {
         const updates = {};
@@ -6137,18 +6184,23 @@
           inviteCode,
           ownerUid: user.uid,
           noDefaultGuardians: true,
-          createdAt: Date.now()
+          createdAt: now
         };
         updates[`families/${famId}/members/${user.uid}`] = true;
         updates[`inviteCodes/${inviteCode}`] = famId;
-        updates[`users/${user.uid}`] = {
-          email: user.email || "",
-          name: user.displayName || "家長",
-          familyId: famId,
+        updates[`users/${user.uid}/email`] = user.email || "";
+        updates[`users/${user.uid}/name`] = user.displayName || "家長";
+        updates[`users/${user.uid}/lastFamilyId`] = famId;
+        updates[`users/${user.uid}/familyId`] = famId;
+        updates[`users/${user.uid}/role`] = "owner";
+        updates[`users/${user.uid}/updatedAt`] = now;
+        updates[`users/${user.uid}/families/${famId}`] = {
+          name: famName,
           role: "owner",
-          updatedAt: Date.now()
+          joinedAt: now
         };
         await update(ref(db), updates);
+        state.userFamilies[famId] = { name: famName, role: "owner", joinedAt: now };
         nameInput.value = "";
         showToast(`家庭建立成功！邀請碼：${inviteCode}`);
         startFamilySession(famId);
@@ -6177,18 +6229,31 @@
         }
 
         const user = state.authUser;
+        const now = Date.now();
+        await set(ref(db, `families/${targetFamId}/members/${user.uid}`), true);
+
+        let targetName = targetFamId === "0000" ? "預設家庭" : targetFamId;
+        try {
+          const metaSnap = await get(ref(db, `families/${targetFamId}/meta/name`));
+          if (metaSnap.exists() && metaSnap.val()) targetName = metaSnap.val();
+        } catch (e) {}
+
+        const existingRole = state.userFamilies[targetFamId]?.role || "member";
         const updates = {};
-        updates[`families/${targetFamId}/members/${user.uid}`] = true;
-        updates[`users/${user.uid}`] = {
-          email: user.email || "",
-          name: user.displayName || "家長",
-          familyId: targetFamId,
-          role: "member",
-          updatedAt: Date.now()
+        updates[`users/${user.uid}/email`] = user.email || "";
+        updates[`users/${user.uid}/name`] = user.displayName || "家長";
+        updates[`users/${user.uid}/lastFamilyId`] = targetFamId;
+        updates[`users/${user.uid}/familyId`] = targetFamId;
+        updates[`users/${user.uid}/updatedAt`] = now;
+        updates[`users/${user.uid}/families/${targetFamId}`] = {
+          name: targetName,
+          role: existingRole,
+          joinedAt: now
         };
         await update(ref(db), updates);
+        state.userFamilies[targetFamId] = { name: targetName, role: existingRole, joinedAt: now };
         codeInput.value = "";
-        showToast("成功加入家庭！");
+        showToast(`成功加入家庭：${targetName}`);
         startFamilySession(targetFamId);
       } catch (err) {
         showToast(`加入失敗：${err.message}`);
@@ -6202,6 +6267,7 @@
       if (!user) {
         detachFamilyListeners();
         resetDbData();
+        state.userFamilies = {};
         FAMILY_KEY = "";
         ROOT_PATH = "";
         syncEl.textContent = "請先登入 Google 帳號";
@@ -6212,16 +6278,34 @@
       syncEl.textContent = "驗證家庭綁定中...";
       try {
         const userSnap = await get(ref(db, `users/${user.uid}`));
-        const userData = userSnap.val();
-        if (userData && userData.familyId) {
-          await set(ref(db, `families/${userData.familyId}/members/${user.uid}`), true);
-          startFamilySession(userData.familyId);
+        const userData = userSnap.val() || {};
+        const famMap = { ...(userData.families || {}) };
+
+        // 相容舊版單一 familyId 欄位，自動補進 families 清單
+        if (userData.familyId && !famMap[userData.familyId]) {
+          famMap[userData.familyId] = {
+            name: userData.familyId === "0000" ? "預設家庭" : userData.familyId,
+            role: userData.role || "member"
+          };
+          await set(ref(db, `users/${user.uid}/families/${userData.familyId}`), famMap[userData.familyId]);
+        }
+
+        state.userFamilies = famMap;
+        const famIds = Object.keys(famMap);
+        const activeFamId = (userData.lastFamilyId && famMap[userData.lastFamilyId])
+          ? userData.lastFamilyId
+          : (userData.familyId && famMap[userData.familyId] ? userData.familyId : famIds[0]);
+
+        if (activeFamId) {
+          await set(ref(db, `families/${activeFamId}/members/${user.uid}`), true);
+          startFamilySession(activeFamId);
         } else {
           detachFamilyListeners();
           resetDbData();
           FAMILY_KEY = "";
           ROOT_PATH = "";
           document.getElementById("setup-user-info").textContent = `已登入：${user.email || user.displayName || ""}`;
+          document.getElementById("btn-setup-back").classList.add("hidden");
           syncEl.textContent = "請建立或加入家庭";
           showPage("family-setup");
         }
@@ -6230,6 +6314,7 @@
         showPage("login");
       }
     });
+
   </script>
 </body>
 </html>
