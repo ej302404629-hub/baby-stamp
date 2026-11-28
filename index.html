@@ -183,14 +183,40 @@
     .kid-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .kid-card-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
     .kid-card-age { font-size: 13px; color: var(--text-sub); }
-    .demo-badge {
-      display: inline-block;
-      font-size: 11px;
-      background: #fef3c7;
-      color: #92400e;
-      padding: 2px 8px;
-      border-radius: 999px;
-      margin-top: 6px;
+    /* 登入與家庭綁定頁 */
+    .auth-card {
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 20px;
+      padding: 24px 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .auth-card-title {
+      font-size: 17px;
+      font-weight: 800;
+      margin: 0 0 8px;
+      color: #111827;
+    }
+    .auth-card-desc {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin: 0 0 14px;
+      line-height: 1.5;
+    }
+    .invite-code-box {
+      background: #eff6ff;
+      border: 2px dashed var(--theme-color);
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      margin: 10px 0 14px;
+    }
+    .invite-code-num {
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: var(--theme-color);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     }
 
     /* 編輯模式選取樣式 */
@@ -1626,12 +1652,49 @@
   <div class="app-container">
     <div class="sync-bar" id="sync-status">雲端連線中...</div>
 
+    <!-- 頁面 0A：Google 登入 -->
+    <section id="page-login" class="page-section" style="justify-content:center;">
+      <div class="auth-card" style="text-align:center;">
+        <div style="font-size:48px; margin-bottom:8px;">🌟</div>
+        <h1 class="page-title" style="margin-top:0;">寶貝好棒棒</h1>
+        <p class="auth-card-desc">請先使用 Google 帳號登入，即可跨裝置同步家庭集章資料。</p>
+        <button class="btn btn-primary btn-block" id="btn-google-login">使用 Google 帳號登入</button>
+      </div>
+    </section>
+
+    <!-- 頁面 0B：建立或加入家庭 -->
+    <section id="page-family-setup" class="page-section hidden">
+      <h1 class="page-title">設定您的家庭</h1>
+      <p class="page-subtitle" id="setup-user-info">尚未綁定家庭</p>
+
+      <div class="auth-card">
+        <h2 class="auth-card-title">🏠 建立新家庭</h2>
+        <p class="auth-card-desc">建立全新的家庭空間（不含預設關主與測試寶貝），系統會自動產生一組邀請碼供家人加入。</p>
+        <div class="form-group">
+          <input type="text" id="setup-family-name" class="form-input" placeholder="請輸入家庭名稱（例如：我們家）" />
+        </div>
+        <button class="btn btn-primary btn-block" id="btn-create-my-family">建立新家庭</button>
+      </div>
+
+      <div class="auth-card">
+        <h2 class="auth-card-title">🔑 用邀請碼加入家庭</h2>
+        <p class="auth-card-desc">輸入家人提供的 6 位數邀請碼，即可加入同一個家庭同步集章。</p>
+        <div class="form-group">
+          <input type="text" id="setup-invite-code" class="form-input" placeholder="請輸入邀請碼" inputmode="numeric" />
+        </div>
+        <button class="btn btn-secondary btn-block" id="btn-join-family" style="background:#10b981; color:#fff;">加入家庭</button>
+      </div>
+
+      <button class="btn btn-secondary btn-block" id="btn-setup-logout">登出切換 Google 帳號</button>
+    </section>
+
     <!-- 頁面 1：選擇關主 -->
-    <section id="page-guardian" class="page-section">
+    <section id="page-guardian" class="page-section hidden">
       <h1 class="page-title">請選擇關主身份</h1>
       <p class="page-subtitle">選擇身分後，背景會切換成專屬顏色（長按可刪除）</p>
       <div class="guardian-grid" id="guardian-grid"></div>
       <button class="btn btn-primary btn-block" id="btn-confirm-guardian">確認進入</button>
+      <button class="btn btn-secondary btn-block" style="margin-top:10px;" id="btn-guardian-logout">登出 Google 帳號</button>
     </section>
 
     <!-- 頁面 2：選擇寶貝 -->
@@ -1787,7 +1850,8 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
-    import { getDatabase, ref, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
 
     // === Firebase 設定 ===
     const firebaseConfig = {
@@ -1800,13 +1864,16 @@
       appId: "1:23229963817:web:2d862adc2d452c261e4638",
       measurementId: "G-8KRQ90NX5S"
     };
-    const FAMILY_KEY = "0000";
-    const ROOT_PATH = `families/${FAMILY_KEY}`;
+    let FAMILY_KEY = "";
+    let ROOT_PATH = "";
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getDatabase(app);
+    const googleProvider = new GoogleAuthProvider();
+    googleProvider.setCustomParameters({ prompt: "select_account" });
 
-    // === 預設資料 ===
+    // === 預設資料（僅供舊家庭 0000 相容使用，新建立的家庭不套用）===
     const DEFAULT_GUARDIANS = {
       dad: { id: "dad", name: "爸爸", color: "#3b82f6", bg: "#dbeafe", avatarType: "dad" },
       mom: { id: "mom", name: "媽媽", color: "#ec4899", bg: "#fce7f3", avatarType: "mom" },
@@ -1815,20 +1882,16 @@
       aunt: { id: "aunt", name: "阿姨", color: "#f97316", bg: "#ffedd5", avatarType: "aunt" }
     };
 
-    const DEMO_KIDS = {
-      demo_sister1: { id: "demo_sister1", name: "姐姐", birthday: "2020-05-10", avatar: "demo_sis1", isDemo: true },
-      demo_sister2: { id: "demo_sister2", name: "妹妹", birthday: "2022-08-20", avatar: "demo_sis2", isDemo: true }
-    };
-
     const WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 
     // === 應用程式狀態 ===
     const state = {
-      dbData: { guardians: {}, kids: {}, deletedDemoKids: {}, tasks: {}, stamps: {}, redemptions: {}, rewards: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
-      currentGuardianId: "dad",
+      authUser: null,
+      dbData: { meta: {}, guardians: {}, kids: {}, tasks: {}, stamps: {}, redemptions: {}, rewards: {}, customStamps: {}, customFrames: {}, archivedStats: {}, settings: { stampMode: "avatar", customStampImage: "", selectedCustomStampId: "", guardianModes: {}, lvlThreshold: 50 } },
+      currentGuardianId: "",
       currentKidId: null,
-      currentPage: "guardian",
-      lastKnownToday: getTodayStr(),      
+      currentPage: "login",
+      lastKnownToday: getTodayStr(),
       currentTab: "tasks",
       bankSubTab: "my", // "my" | "punished"
       viewDate: getTodayStr(),
@@ -1896,19 +1959,22 @@
         .replace(/'/g, "&#39;");
     }
 
-    const LAST_GUARDIAN_KEY = `baby_stamp_last_guardian_${FAMILY_KEY}`;
+    function getLastGuardianKey() {
+      return `baby_stamp_last_guardian_${FAMILY_KEY || "none"}`;
+    }
     function saveLastGuardian(guardianId) {
       try {
-        if (guardianId) localStorage.setItem(LAST_GUARDIAN_KEY, guardianId);
+        if (guardianId && FAMILY_KEY) localStorage.setItem(getLastGuardianKey(), guardianId);
       } catch (e) {}
     }
     function getSavedGuardianId() {
       try {
-        return localStorage.getItem(LAST_GUARDIAN_KEY) || "";
+        return FAMILY_KEY ? (localStorage.getItem(getLastGuardianKey()) || "") : "";
       } catch (e) {
         return "";
       }
     }
+
 
     // === 取得各關主獨立的蓋章模式設定（未設定過預設關主圖示）===
     function getGuardianStampSettings(guardianId = state.currentGuardianId) {
@@ -2402,7 +2468,7 @@
         const updates = {};
         if (state.editMode === "guardian") {
           ids.forEach((id) => {
-            if (DEFAULT_GUARDIANS[id]) {
+            if (isLegacyDefaultFamily() && DEFAULT_GUARDIANS[id]) {
               updates[`${ROOT_PATH}/guardians/${id}`] = { id, deleted: true };
             } else {
               updates[`${ROOT_PATH}/guardians/${id}`] = null;
@@ -2413,14 +2479,11 @@
           const deletingStampIds = new Set();
 
           ids.forEach((id) => {
-            if (DEMO_KIDS[id]) {
-              updates[`${ROOT_PATH}/deletedDemoKids/${id}`] = true;
-            } else {
-              updates[`${ROOT_PATH}/kids/${id}`] = null;
-            }
+            updates[`${ROOT_PATH}/kids/${id}`] = null;
             updates[`${ROOT_PATH}/archivedStats/${id}`] = null;
             updates[`${ROOT_PATH}/rewards/${id}`] = null;
           });
+
 
           // 清除該寶貝的所有圖章（包含一般圖章、處罰圖章、已兌換圖章）
           Object.values(state.dbData.stamps || {}).forEach((s) => {
@@ -2862,33 +2925,23 @@
       </svg>`;
     }
 
-    function getDemoKidSVG(type) {
-      if (type === "demo_sis1") {
-        return `<svg viewBox="0 0 100 100" width="100%" height="100%">
-          <circle cx="50" cy="50" r="50" fill="#fce7f3"/>
-          <circle cx="50" cy="55" r="28" fill="#fef3c7"/>
-          <path d="M22 50 C22 20, 78 20, 78 50 Q50 34 22 50 Z" fill="#451a03"/>
-          <polygon points="62,24 76,18 72,32" fill="#f43f5e"/>
-          <circle cx="39" cy="55" r="3" fill="#1f2937"/><circle cx="61" cy="55" r="3" fill="#1f2937"/>
-          <path d="M44 66 Q50 72 56 66" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>`;
-      }
+    function getDefaultKidSVG() {
       return `<svg viewBox="0 0 100 100" width="100%" height="100%">
         <circle cx="50" cy="50" r="50" fill="#e0f2fe"/>
-        <circle cx="20" cy="48" r="11" fill="#451a03"/><circle cx="80" cy="48" r="11" fill="#451a03"/>
-        <circle cx="50" cy="55" r="27" fill="#fef3c7"/>
-        <path d="M24 48 C24 22, 76 22, 76 48 Q50 34 24 48 Z" fill="#451a03"/>
-        <circle cx="39" cy="55" r="3" fill="#1f2937"/><circle cx="61" cy="55" r="3" fill="#1f2937"/>
-        <path d="M44 66 Q50 72 56 66" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="50" cy="54" r="27" fill="#fef3c7"/>
+        <circle cx="39" cy="52" r="3" fill="#1f2937"/><circle cx="61" cy="52" r="3" fill="#1f2937"/>
+        <circle cx="32" cy="58" r="4" fill="#fca5a5" opacity="0.65"/><circle cx="68" cy="58" r="4" fill="#fca5a5" opacity="0.65"/>
+        <path d="M43 64 Q50 71 57 64" fill="none" stroke="#0284c7" stroke-width="2.6" stroke-linecap="round"/>
       </svg>`;
     }
 
     function renderKidAvatarHTML(kid) {
       if (kid.avatar && kid.avatar.startsWith("data:image")) {
-        return `<img src="${kid.avatar}" alt="${kid.name}" style="width:100%;height:100%;object-fit:cover;" />`;
+        return `<img src="${kid.avatar}" alt="${escapeHTML(kid.name)}" style="width:100%;height:100%;object-fit:cover;" />`;
       }
-      return getDemoKidSVG(kid.avatar || "demo_sis1");
+      return getDefaultKidSVG();
     }
+
 
     // === 20 個級別的裝飾外框 SVG 獲取函式 (隨著等級越高越厲害，加入動態、漸變與細節) ===
     const FRAME_LEVEL_NAMES = [
@@ -2993,11 +3046,15 @@
       }
     }
 
+    function isLegacyDefaultFamily() {
+      return FAMILY_KEY === "0000" && !state.dbData.meta?.noDefaultGuardians;
+    }
+
     function getGuardianForDisplay(id) {
       const custom = (state.dbData.guardians || {})[id];
       if (custom && !custom.deleted) return custom;
-      if (DEFAULT_GUARDIANS[id]) return DEFAULT_GUARDIANS[id];
-      return { id, name: "已刪除關主", color: "#6b7280", bg: "#f3f4f6", avatarType: "custom" };
+      if (isLegacyDefaultFamily() && DEFAULT_GUARDIANS[id]) return DEFAULT_GUARDIANS[id];
+      return { id: id || "", name: "尚未選擇關主", color: "#3b82f6", bg: "#eff6ff", avatarType: "custom" };
     }
 
     function renderStampGraphic(stamp) {
@@ -3038,7 +3095,9 @@
 
     // === 取得合併後的資料 ===
     function getAllGuardians() {
-      const merged = { ...DEFAULT_GUARDIANS, ...(state.dbData.guardians || {}) };
+      const merged = isLegacyDefaultFamily()
+        ? { ...DEFAULT_GUARDIANS, ...(state.dbData.guardians || {}) }
+        : { ...(state.dbData.guardians || {}) };
       const active = {};
       Object.values(merged).forEach((g) => {
         if (g && !g.deleted) active[g.id] = g;
@@ -3047,14 +3106,7 @@
     }
 
     function getActiveKids() {
-      const realKids = state.dbData.kids || {};
-      if (Object.keys(realKids).length > 0) return realKids;
-      const deletedDemo = state.dbData.deletedDemoKids || {};
-      const activeDemo = {};
-      Object.values(DEMO_KIDS).forEach((k) => {
-        if (!deletedDemo[k.id]) activeDemo[k.id] = k;
-      });
-      return activeDemo;
+      return state.dbData.kids || {};
     }
 
     function applyGuardianTheme(guardianId) {
@@ -3235,6 +3287,8 @@
       state.editMode = null;
       state.editSelectedIds.clear();
       updateEditBar();
+      document.getElementById("page-login").classList.toggle("hidden", pageName !== "login");
+      document.getElementById("page-family-setup").classList.toggle("hidden", pageName !== "family-setup");
       document.getElementById("page-guardian").classList.toggle("hidden", pageName !== "guardian");
       document.getElementById("page-kid").classList.toggle("hidden", pageName !== "kid");
       document.getElementById("page-main").classList.toggle("hidden", pageName !== "main");
@@ -3244,6 +3298,7 @@
       }
       renderAll();
     }
+
 
     // === 級數計算 ===
     function getKidLevelAndTotal(kidId) {
@@ -3267,7 +3322,9 @@
     function renderAll() {
       const guardians = getAllGuardians();
       const guardianKeys = Object.keys(guardians);
-      if (guardianKeys.length > 0 && !guardians[state.currentGuardianId]) {
+      if (guardianKeys.length === 0) {
+        state.currentGuardianId = "";
+      } else if (!guardians[state.currentGuardianId]) {
         state.currentGuardianId = guardianKeys[0];
       }
       applyGuardianTheme(state.currentGuardianId);
@@ -3291,6 +3348,7 @@
         renderCustomStampsModalContent();
       }
     }
+
 
     function renderGuardianPage() {
       const grid = document.getElementById("guardian-grid");
@@ -3359,7 +3417,7 @@
           </div>
           <div class="kid-card-name">${escapeHTML(kid.name)} <span class="lvl-badge" style="font-size:10px; padding:1px 4px; vertical-align:middle;">LVL ${lvl}</span></div>
           <div class="kid-card-age">${calcAge(kid.birthday)}</div>
-          ${kid.isDemo ? '<span class="demo-badge">測試用預設寶貝</span>' : ""}`;
+        `;
 
         attachLongPress(card, () => enterEditMode("kid", kid.id));
         card.onclick = () => {
@@ -3405,10 +3463,6 @@
     function openConfirmChangeAvatarModal() {
       const kid = getActiveKids()[state.currentKidId];
       if (!kid) return;
-      if (kid.isDemo) {
-        showToast("測試用預設寶貝不支援更換照片");
-        return;
-      }
       const { lvl } = getKidLevelAndTotal(state.currentKidId);
       openModal(`
         <h3 class="modal-title">更換寶貝頭像</h3>
@@ -4926,7 +4980,7 @@
         if (!name) return showToast("請輸入寶貝姓名");
         const id = uid("kid");
         set(ref(db, `${ROOT_PATH}/kids/${id}`), {
-          id, name, birthday, avatar: uploadedBase64 || "demo_sis1"
+          id, name, birthday, avatar: uploadedBase64 || ""
         });
         closeModal();
         showToast(`已新增寶貝：${name}`);
@@ -4950,6 +5004,7 @@
           </span>
           <span>›</span>
         </button>
+        <button class="menu-list-btn" id="set-family-info"><span>🏠 家庭資訊與邀請碼</span><span>›</span></button>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-close">關閉</button>
         </div>`);
@@ -4959,6 +5014,42 @@
       document.getElementById("set-switch-kid").onclick = openSwitchKidModal;
       document.getElementById("set-add-task").onclick = openAddTaskModal;
       document.getElementById("set-stamp-style").onclick = openCustomStampsModal;
+      document.getElementById("set-family-info").onclick = openFamilyInfoModal;
+    }
+
+    function openFamilyInfoModal() {
+      const meta = state.dbData.meta || {};
+      const famName = meta.name || (FAMILY_KEY === "0000" ? "預設家庭" : "我的家庭");
+      const inviteCode = meta.inviteCode || "尚未設定";
+      const userEmail = state.authUser?.email || "";
+
+      openModal(`
+        <h3 class="modal-title">🏠 家庭資訊與帳號</h3>
+        <p style="text-align:center; font-size:15px; font-weight:800; margin:0 0 4px;">${escapeHTML(famName)}</p>
+        <p style="text-align:center; font-size:12px; color:#6b7280; margin:0 0 10px;">目前登入：${escapeHTML(userEmail)}</p>
+        <div class="invite-code-box">
+          <div style="font-size:12px; color:#4b5563; margin-bottom:4px;">家人加入邀請碼</div>
+          <div class="invite-code-num">${escapeHTML(inviteCode)}</div>
+          ${meta.inviteCode ? `<button class="btn btn-primary" id="btn-copy-invite" style="margin-top:10px; padding:8px 16px; font-size:13px;">複製邀請碼</button>` : ""}
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-danger" id="btn-modal-logout">登出帳號</button>
+          <button class="btn btn-secondary" id="m-close">關閉</button>
+        </div>`);
+
+      const copyBtn = document.getElementById("btn-copy-invite");
+      if (copyBtn) {
+        copyBtn.onclick = () => {
+          navigator.clipboard?.writeText(inviteCode)
+            .then(() => showToast(`已複製邀請碼：${inviteCode}`))
+            .catch(() => prompt("請手動複製邀請碼：", inviteCode));
+        };
+      }
+      document.getElementById("btn-modal-logout").onclick = async () => {
+        closeModal();
+        await signOut(auth);
+      };
+      document.getElementById("m-close").onclick = closeModal;
     }
 
     // === 選擇圖章視窗（整合預設圖章與自訂圖章）===
@@ -5809,7 +5900,6 @@
     }, { passive: true });
 
     // === 監聽 Firebase 即時資料 ===
-    const CORE_CACHE_KEY = `baby_stamp_core_${FAMILY_KEY}`;
     const DEFAULT_SETTINGS = {
       stampMode: "avatar",
       customStampImage: "",
@@ -5818,18 +5908,42 @@
       lvlThreshold: 50
     };
 
-    // 輕量本機快取（關主、寶貝、設定）
+    let activeUnsubscribers = [];
+
+    function getCoreCacheKey() {
+      return `baby_stamp_core_${FAMILY_KEY}`;
+    }
+
+    function detachFamilyListeners() {
+      activeUnsubscribers.forEach((unsub) => {
+        try { unsub(); } catch (e) {}
+      });
+      activeUnsubscribers = [];
+    }
+
+    function resetDbData() {
+      state.dbData = {
+        meta: {}, guardians: {}, kids: {}, tasks: {}, stamps: {},
+        redemptions: {}, rewards: {}, customStamps: {}, customFrames: {},
+        archivedStats: {}, settings: { ...DEFAULT_SETTINGS }
+      };
+      state.currentGuardianId = "";
+      state.currentKidId = null;
+      state.selectedStampIds.clear();
+      state.coreLoaded = false;
+    }
+
     function saveCoreCache() {
+      if (!FAMILY_KEY) return;
       const payload = {
+        meta: state.dbData.meta,
         guardians: state.dbData.guardians,
         kids: state.dbData.kids,
-        deletedDemoKids: state.dbData.deletedDemoKids,
         settings: state.dbData.settings
       };
       try {
-        localStorage.setItem(CORE_CACHE_KEY, JSON.stringify(payload));
+        localStorage.setItem(getCoreCacheKey(), JSON.stringify(payload));
       } catch (e) {
-        // 若因 GIF 頭像過大超出 localStorage 上限，改為略過大型 Base64 頭像後再快取
         try {
           const lightKids = {};
           Object.entries(state.dbData.kids || {}).forEach(([id, k]) => {
@@ -5837,14 +5951,13 @@
             const isLargeAvatar = typeof k.avatar === "string" && k.avatar.length > 150000;
             lightKids[id] = isLargeAvatar ? { ...k, avatar: "" } : k;
           });
-          localStorage.setItem(CORE_CACHE_KEY, JSON.stringify({ ...payload, kids: lightKids }));
+          localStorage.setItem(getCoreCacheKey(), JSON.stringify({ ...payload, kids: lightKids }));
         } catch (err) {}
       }
     }
 
-
-    // 大容量本機快取（外框 GIF、自訂圖章，使用 IndexedDB）
     function openMediaDB() {
+      if (!FAMILY_KEY) return Promise.resolve(null);
       return new Promise((resolve) => {
         try {
           const req = indexedDB.open(`baby_stamp_media_${FAMILY_KEY}`, 1);
@@ -5881,7 +5994,6 @@
       } catch (e) {}
     }
 
-    // 合併多次監聽觸發，避免同一時間重複渲染畫面
     let renderScheduled = false;
     function scheduleRender() {
       if (renderScheduled) return;
@@ -5899,92 +6011,225 @@
       btn.textContent = state.coreLoaded ? "確認進入" : "載入寶貝資料中...";
     }
 
-    // 1. 啟動時先讀取本機快取，立即顯示關主畫面
-    try {
-      const cached = JSON.parse(localStorage.getItem(CORE_CACHE_KEY) || "null");
-      if (cached) {
-        if (cached.guardians) state.dbData.guardians = cached.guardians;
-        if (cached.kids) state.dbData.kids = cached.kids;
-        if (cached.deletedDemoKids) state.dbData.deletedDemoKids = cached.deletedDemoKids;
-        if (cached.settings) state.dbData.settings = { ...DEFAULT_SETTINGS, ...cached.settings };
-        state.coreLoaded = true;
-      }
-    } catch (e) {}
+    function startFamilySession(familyId) {
+      detachFamilyListeners();
+      resetDbData();
+      FAMILY_KEY = familyId;
+      ROOT_PATH = `families/${FAMILY_KEY}`;
 
-    updateConfirmBtnState();
-    const savedGuardianId = getSavedGuardianId();
-    const initialGuardians = getAllGuardians();
-    if (savedGuardianId && initialGuardians[savedGuardianId]) {
-      state.currentGuardianId = savedGuardianId;
-      playGuardianWelcomeAnimation({ fromCenter: true });
-    } else {
-      renderAll();
-    }
-
-    // 非同步載入本機快取的外框與自訂圖章
-    Promise.all([idbGet("customFrames"), idbGet("customStamps")]).then(([frames, stamps]) => {
-      let updated = false;
-      if (frames && Object.keys(state.dbData.customFrames).length === 0) {
-        state.dbData.customFrames = frames;
-        updated = true;
-      }
-      if (stamps && Object.keys(state.dbData.customStamps).length === 0) {
-        state.dbData.customStamps = stamps;
-        updated = true;
-      }
-      if (updated) scheduleRender();
-    });
-
-    // 2. 分流監聽 Firebase 節點（先載輕量核心，再於背景載入大型外框與圖章）
-    const loadedPaths = new Set();
-    const corePaths = ["guardians", "kids", "deletedDemoKids", "settings", "tasks", "stamps", "redemptions", "rewards", "archivedStats"];
-    const heavyPaths = ["customStamps", "customFrames"];
-
-    function updateSyncStatus() {
-      const el = document.getElementById("sync-status");
-      const readyCore = ["guardians", "kids", "deletedDemoKids"].every((k) => loadedPaths.has(k));
-      const readyHeavy = heavyPaths.every((k) => loadedPaths.has(k));
-      if (readyCore && !state.coreLoaded) {
-        state.coreLoaded = true;
-        updateConfirmBtnState();
-      }
-      if (readyCore && readyHeavy) {
-        el.textContent = "雲端已即時同步";
-      } else if (readyCore) {
-        el.textContent = "雲端已同步（背景載入外框中...）";
-      }
-    }
-
-    function bindNode(key, isHeavy = false) {
-      onValue(ref(db, `${ROOT_PATH}/${key}`), (snapshot) => {
-        const val = snapshot.val();
-        state.dbData[key] = key === "settings"
-          ? { ...DEFAULT_SETTINGS, ...(val || {}) }
-          : (val || {});
-
-        loadedPaths.add(key);
-
-        if (["guardians", "kids", "deletedDemoKids", "settings"].includes(key)) {
-          saveCoreCache();
-        } else if (isHeavy) {
-          idbSet(key, state.dbData[key]);
+      // 1. 讀取本機快取
+      try {
+        const cached = JSON.parse(localStorage.getItem(getCoreCacheKey()) || "null");
+        if (cached) {
+          if (cached.meta) state.dbData.meta = cached.meta;
+          if (cached.guardians) state.dbData.guardians = cached.guardians;
+          if (cached.kids) state.dbData.kids = cached.kids;
+          if (cached.settings) state.dbData.settings = { ...DEFAULT_SETTINGS, ...cached.settings };
+          state.coreLoaded = true;
         }
+      } catch (e) {}
 
-        updateSyncStatus();
+      updateConfirmBtnState();
+      const savedGuardianId = getSavedGuardianId();
+      const initialGuardians = getAllGuardians();
+      if (savedGuardianId && initialGuardians[savedGuardianId]) {
+        state.currentGuardianId = savedGuardianId;
+        document.getElementById("page-login").classList.add("hidden");
+        document.getElementById("page-family-setup").classList.add("hidden");
+        playGuardianWelcomeAnimation({ fromCenter: true });
+      } else {
+        showPage("guardian");
+      }
 
-        // 等印章、兌換紀錄、封存統計與自訂圖章都載入完成，再執行過期清理
-        if (["stamps", "redemptions", "archivedStats", "customStamps"].every((k) => loadedPaths.has(k))) {
-          cleanupExpiredRedeemedStamps();
+      Promise.all([idbGet("customFrames"), idbGet("customStamps")]).then(([frames, stamps]) => {
+        let updated = false;
+        if (frames && Object.keys(state.dbData.customFrames).length === 0) {
+          state.dbData.customFrames = frames;
+          updated = true;
         }
-
-        scheduleRender();
-      }, (err) => {
-        document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
+        if (stamps && Object.keys(state.dbData.customStamps).length === 0) {
+          state.dbData.customStamps = stamps;
+          updated = true;
+        }
+        if (updated) scheduleRender();
       });
+
+      // 2. 分流監聽此家庭的 Firebase 節點
+      const loadedPaths = new Set();
+      const corePaths = ["meta", "guardians", "kids", "settings", "tasks", "stamps", "redemptions", "rewards", "archivedStats"];
+      const heavyPaths = ["customStamps", "customFrames"];
+
+      function updateSyncStatus() {
+        const el = document.getElementById("sync-status");
+        const readyCore = ["meta", "guardians", "kids"].every((k) => loadedPaths.has(k));
+        const readyHeavy = heavyPaths.every((k) => loadedPaths.has(k));
+        if (readyCore && !state.coreLoaded) {
+          state.coreLoaded = true;
+          updateConfirmBtnState();
+        }
+        if (readyCore && readyHeavy) {
+          el.textContent = `雲端已即時同步 · ${state.dbData.meta?.name || FAMILY_KEY}`;
+        } else if (readyCore) {
+          el.textContent = "雲端已同步（背景載入外框中...）";
+        }
+      }
+
+      function bindNode(key, isHeavy = false) {
+        const unsub = onValue(ref(db, `${ROOT_PATH}/${key}`), (snapshot) => {
+          const val = snapshot.val();
+          state.dbData[key] = key === "settings"
+            ? { ...DEFAULT_SETTINGS, ...(val || {}) }
+            : (val || {});
+
+          loadedPaths.add(key);
+
+          if (["meta", "guardians", "kids", "settings"].includes(key)) {
+            saveCoreCache();
+          } else if (isHeavy) {
+            idbSet(key, state.dbData[key]);
+          }
+
+          updateSyncStatus();
+
+          if (["stamps", "redemptions", "archivedStats", "customStamps"].every((k) => loadedPaths.has(k))) {
+            cleanupExpiredRedeemedStamps();
+          }
+
+          scheduleRender();
+        }, (err) => {
+          document.getElementById("sync-status").textContent = `連線錯誤：${err.message}`;
+        });
+        activeUnsubscribers.push(unsub);
+      }
+
+      corePaths.forEach((k) => bindNode(k, false));
+      heavyPaths.forEach((k) => bindNode(k, true));
     }
 
-    corePaths.forEach((k) => bindNode(k, false));
-    heavyPaths.forEach((k) => bindNode(k, true));
+    // === Google 帳號登入、建立家庭、邀請碼加入家庭 ===
+    document.getElementById("btn-google-login").onclick = async () => {
+      try {
+        await signInWithPopup(auth, googleProvider);
+      } catch (err) {
+        showToast(`登入失敗：${err.message}`);
+      }
+    };
+
+    const doSignOut = async () => {
+      await signOut(auth);
+      showToast("已登出帳號");
+    };
+    document.getElementById("btn-setup-logout").onclick = doSignOut;
+    document.getElementById("btn-guardian-logout").onclick = doSignOut;
+
+    document.getElementById("btn-create-my-family").onclick = async () => {
+      if (!state.authUser) return;
+      const nameInput = document.getElementById("setup-family-name");
+      const famName = nameInput.value.trim() || "我們家";
+      const famId = `fam_${Math.random().toString(36).slice(2, 10)}`;
+      const inviteCode = String(Math.floor(100000 + Math.random() * 900000));
+      const user = state.authUser;
+
+      try {
+        const updates = {};
+        updates[`families/${famId}/meta`] = {
+          name: famName,
+          inviteCode,
+          ownerUid: user.uid,
+          noDefaultGuardians: true,
+          createdAt: Date.now()
+        };
+        updates[`families/${famId}/members/${user.uid}`] = true;
+        updates[`inviteCodes/${inviteCode}`] = famId;
+        updates[`users/${user.uid}`] = {
+          email: user.email || "",
+          name: user.displayName || "家長",
+          familyId: famId,
+          role: "owner",
+          updatedAt: Date.now()
+        };
+        await update(ref(db), updates);
+        nameInput.value = "";
+        showToast(`家庭建立成功！邀請碼：${inviteCode}`);
+        startFamilySession(famId);
+      } catch (err) {
+        showToast(`建立失敗：${err.message}`);
+      }
+    };
+
+    document.getElementById("btn-join-family").onclick = async () => {
+      if (!state.authUser) return;
+      const codeInput = document.getElementById("setup-invite-code");
+      const code = codeInput.value.trim();
+      if (!code) return showToast("請輸入邀請碼");
+
+      try {
+        let targetFamId = null;
+        const codeSnap = await get(ref(db, `inviteCodes/${code}`));
+        if (codeSnap.exists()) {
+          targetFamId = codeSnap.val();
+        } else if (code === "0000") {
+          targetFamId = "0000";
+        }
+
+        if (!targetFamId) {
+          return showToast("找不到此邀請碼，請確認是否輸入正確");
+        }
+
+        const user = state.authUser;
+        const updates = {};
+        updates[`families/${targetFamId}/members/${user.uid}`] = true;
+        updates[`users/${user.uid}`] = {
+          email: user.email || "",
+          name: user.displayName || "家長",
+          familyId: targetFamId,
+          role: "member",
+          updatedAt: Date.now()
+        };
+        await update(ref(db), updates);
+        codeInput.value = "";
+        showToast("成功加入家庭！");
+        startFamilySession(targetFamId);
+      } catch (err) {
+        showToast(`加入失敗：${err.message}`);
+      }
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      state.authUser = user;
+      const syncEl = document.getElementById("sync-status");
+
+      if (!user) {
+        detachFamilyListeners();
+        resetDbData();
+        FAMILY_KEY = "";
+        ROOT_PATH = "";
+        syncEl.textContent = "請先登入 Google 帳號";
+        showPage("login");
+        return;
+      }
+
+      syncEl.textContent = "驗證家庭綁定中...";
+      try {
+        const userSnap = await get(ref(db, `users/${user.uid}`));
+        const userData = userSnap.val();
+        if (userData && userData.familyId) {
+          await set(ref(db, `families/${userData.familyId}/members/${user.uid}`), true);
+          startFamilySession(userData.familyId);
+        } else {
+          detachFamilyListeners();
+          resetDbData();
+          FAMILY_KEY = "";
+          ROOT_PATH = "";
+          document.getElementById("setup-user-info").textContent = `已登入：${user.email || user.displayName || ""}`;
+          syncEl.textContent = "請建立或加入家庭";
+          showPage("family-setup");
+        }
+      } catch (err) {
+        syncEl.textContent = `讀取帳號失敗：${err.message}`;
+        showPage("login");
+      }
+    });
   </script>
 </body>
 </html>
