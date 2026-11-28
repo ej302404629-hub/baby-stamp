@@ -6227,10 +6227,7 @@
         const codeSnap = await get(ref(db, `inviteCodes/${code}`));
         if (codeSnap.exists()) {
           targetFamId = codeSnap.val();
-        } else if (code === "0000") {
-          targetFamId = "0000";
-        }
-
+        } 
         if (!targetFamId) {
           return showToast("找不到此邀請碼，請確認是否輸入正確");
         }
