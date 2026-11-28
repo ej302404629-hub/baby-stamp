@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>寶貝集章 - 後台管理系統</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-soft: #eff6ff;
+      --danger: #dc2626;
+      --danger-soft: #fef2f2;
+      --success: #16a34a;
+      --success-soft: #f0fdf4;
+      --warn: #d97706;
+      --warn-soft: #fffbeb;
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --sub: #6b7280;
+      --border: #e5e7eb;
+      --radius: 14px;
+      --shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .hidden { display: none !important; }
+
+    /* 頂部導覽列 */
+    .topbar {
+      background: #111827;
+      color: #fff;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+    .topbar-title {
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .topbar-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.3);
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 20px 16px 60px;
+    }
+
+    /* 卡片與按鈕 */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-secondary { background: #e5e7eb; color: #374151; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-warn { background: var(--warn); color: #fff; }
+    .btn-sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+    /* 警示條 */
+    .banner {
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .banner-danger { background: var(--danger-soft); border: 1.5px solid #fca5a5; color: #991b1b; }
+
+    /* 登入畫面 */
+    .login-box {
+      max-width: 420px;
+      margin: 70px auto;
+      text-align: center;
+      padding: 32px 24px;
+    }
+    .login-box h1 { margin: 0 0 8px; font-size: 24px; }
+    .login-box p { margin: 0 0 22px; color: var(--sub); font-size: 14px; line-height: 1.6; }
+
+    /* 數據總覽 */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .stat-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .stat-label { font-size: 12px; color: var(--sub); font-weight: 700; }
+    .stat-value { font-size: 26px; font-weight: 900; margin-top: 4px; color: var(--primary); }
+
+    /* 分頁籤 */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .tab-btn {
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--sub);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    /* 表單與表格 */
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+      min-width: 160px;
+    }
+    .form-field label { font-size: 12px; font-weight: 700; color: #374151; }
+    .input, .select {
+      width: 100%;
+      padding: 9px 11px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 9px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 800;
+      color: #374151;
+      white-space: nowrap;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .badge-blue { background: var(--primary-soft); color: var(--primary); }
+    .badge-green { background: var(--success-soft); color: var(--success); }
+    .badge-warn { background: var(--warn-soft); color: var(--warn); }
+    .badge-red { background: var(--danger-soft); color: var(--danger); }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    /* 家庭詳細卡片 */
+    .family-card {
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      background: #fcfcfd;
+    }
+    .family-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .family-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+    .family-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .member-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .member-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+    }
+    .member-chip button {
+      border: none;
+      background: var(--danger-soft);
+      color: var(--danger);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-weight: 900;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    /* 容量條 */
+    .size-bars {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .size-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+    }
+    .size-box strong { display: block; font-size: 15px; margin-top: 2px; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(17, 24, 39, 0.92);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-title">🛠️ 寶貝集章後台管理</div>
+    <div class="topbar-user hidden" id="topbar-user">
+      <img id="user-photo" class="topbar-avatar" alt="" />
+      <div>
+        <div id="user-name" style="font-weight:700;"></div>
+        <div id="user-email" style="font-size:11px; opacity:0.8;"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-copy-uid" title="複製自己的 UID">複製 UID</button>
+      <button class="btn btn-danger btn-sm" id="btn-logout">登出</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- 尚未登入 -->
+    <section id="view-login" class="card login-box">
+      <h1>管理員登入</h1>
+      <p>請使用授權的 Google 帳號登入後台。<br/>僅限指定管理員帳號可檢視與操作資料庫。</p>
+      <button class="btn btn-primary" id="btn-google-login" style="width:100%; padding:12px;">
+        使用 Google 帳號登入
+      </button>
+      <p id="login-error" style="color:var(--danger); margin-top:14px; font-size:13px;" class="hidden"></p>
+    </section>
+
+    <!-- 非管理員擋牆 -->
+    <section id="view-denied" class="card login-box hidden">
+      <h1 style="color:var(--danger);">沒有管理權限</h1>
+      <p>您目前登入的帳號（<span class="mono" id="denied-email"></span>）沒有權限存取此後台。</p>
+      <button class="btn btn-danger" id="btn-denied-logout">登出切換帳號</button>
+    </section>
+
+    <!-- 管理主畫面 -->
+    <section id="view-admin" class="hidden">
+      <div id="db-error-banner" class="banner banner-danger hidden"></div>
+
+      <!-- 數據總覽 -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">家庭總數</div>
+          <div class="stat-value" id="stat-families">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">已註冊帳號數</div>
+          <div class="stat-value" id="stat-users">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">總寶貝 / 總圖章</div>
+          <div class="stat-value" id="stat-kids-stamps">0 / 0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">資料庫估算容量</div>
+          <div class="stat-value" id="stat-total-size">0 KB</div>
+        </div>
+      </div>
+
+      <!-- 頁籤切換 -->
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="families">🏠 家庭與成員管理</button>
+        <button class="tab-btn" data-tab="users">👤 帳號綁定總表</button>
+        <button class="tab-btn" data-tab="backup">💾 備份與還原</button>
+        <button class="tab-btn" data-tab="migrate">🚚 資料搬家工具</button>
+        <button class="tab-btn" data-tab="storage">📊 容量監控與清理</button>
+      </nav>
+
+      <!-- Tab 1: 家庭與成員管理 -->
+      <div id="tab-families">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">建立新家庭</h2>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>家庭 ID（留空自動產生隨機 ID）</label>
+              <input type="text" id="new-fam-id" class="input" placeholder="例如：fam_a8k2p9" />
+            </div>
+            <div class="form-field">
+              <label>家庭名稱</label>
+              <input type="text" id="new-fam-name" class="input" placeholder="例如：小周的家" />
+            </div>
+            <button class="btn btn-primary" id="btn-create-family">＋ 建立家庭</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">現有家庭列表</h2>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-all">重新整理</button>
+          </div>
+          <div id="families-list"></div>
+        </div>
+      </div>
+
+      <!-- Tab 2: 帳號綁定總表 -->
+      <div id="tab-users" class="hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">手動新增 / 綁定帳號到家庭</h2>
+          </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Google UID</label>
+              <input type="text" id="bind-uid-input" class="input" placeholder="貼上使用者的 Firebase Auth UID" />
+            </div>
+            <div class="form-field">
+              <label>顯示名稱（選填）</label>
+              <input type="text" id="bind-name-input" class="input" placeholder="例如：爸爸、媽媽" />
+            </div>
+            <div class="form-field">
+              <label>指定家庭</label>
+              <select id="bind-family-select" class="select"></select>
+            </div>
+            <button class="btn btn-primary" id="btn-manual-bind">確認綁定</button>
+          </div>
+          <p style="margin:0; font-size:12px; color:var(--sub);">
+            小提示：剛登入後台時，可點右上角「複製 UID」貼到這裡，立刻將自己的 Google 帳號綁定到舊家庭 <span class="mono">0000</span>。
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">所有已記錄帳號（users 節點）</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>名稱 / Email</th>
+                  <th>UID</th>
+                  <th>目前綁定家庭</th>
+                  <th>角色</th>
+                  <th>切換綁定 / 操作</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: 備份與還原 -->
+      <div id="tab-backup" class="hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">一鍵匯出 JSON 備份</h2>
+          </div>
+          <p style="font-size:13px; color:var(--sub); margin-top:0;">
+            建議在進行資料搬家、刪除家庭或主程式大改版前，先下載一份完整 JSON 備份。
+          </p>
+          <div class="form-row">
+            <div class="form-field">
+              <label>選擇要匯出的單一家庭</label>
+              <select id="export-family-select" class="select"></select>
+            </div>
+            <button class="btn btn-primary" id="btn-export-family">下載該家庭備份 (.json)</button>
+            <button class="btn btn-success" id="btn-export-full">下載整個資料庫完整備份 (.json)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">從 JSON 還原單一家庭</h2>
+          </div>
+          <p style="font-size:13px; color:var(--danger); margin-top:0; font-weight:600;">
+            ⚠️ 注意：還原會覆蓋目標家庭 ID 下的所有資料，請務必確認目標 ID 無誤。
+          </p>
+          <div class="form-row">
+            <div class="form-field">
+              <label>目標家庭 ID（可填既有的或新的 ID）</label>
+              <input type="text" id="import-target-id" class="input" placeholder="例如：0000 或 fam_restore_test" />
+            </div>
+            <div class="form-field">
+              <label>選擇備份 JSON 檔案</label>
+              <input type="file" id="import-file-input" accept=".json,application/json" class="input" />
+            </div>
+            <button class="btn btn-danger" id="btn-import-family">確認還原覆蓋</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: 資料搬家工具 -->
+      <div id="tab-migrate" class="hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">家庭資料搬家（複製節點並切換成員）</h2>
+          </div>
+          <p style="font-size:13px; color:var(--sub); margin-top:0; line-height:1.6;">
+            如果你想把舊的簡易 ID（例如 <span class="mono">0000</span>）換成較安全的隨機 ID，可以用此工具完整複製資料到新節點，並自動把該家庭的所有成員指向新家庭。
+          </p>
+          <div class="form-row">
+            <div class="form-field">
+              <label>來源家庭</label>
+              <select id="migrate-src-select" class="select"></select>
+            </div>
+            <div class="form-field">
+              <label>新目標家庭 ID</label>
+              <input type="text" id="migrate-dst-id" class="input" placeholder="點擊右側產生隨機 ID" />
+            </div>
+            <button class="btn btn-secondary" id="btn-gen-migrate-id">🎲 產生隨機 ID</button>
+          </div>
+          <div style="margin:12px 0 16px; display:flex; flex-direction:column; gap:8px; font-size:13px;">
+            <label style="cursor:pointer;">
+              <input type="checkbox" id="migrate-update-users" checked />
+              同時將來源家庭的所有成員（users 節點）自動改綁定至新家庭 ID
+            </label>
+            <label style="cursor:pointer; color:var(--danger);">
+              <input type="checkbox" id="migrate-delete-src" />
+              搬家完成後刪除來源家庭節點（建議先保留，確認新家庭運作正常再手動刪除）
+            </label>
+          </div>
+          <button class="btn btn-primary" id="btn-run-migrate">開始搬家</button>
+        </div>
+      </div>
+
+      <!-- Tab 5: 容量監控與清理 -->
+      <div id="tab-storage" class="hidden">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">各家庭容量分析與孤兒圖片清理</h2>
+          </div>
+          <p style="font-size:13px; color:var(--sub); margin-top:0;">
+            統計各家庭存放在 Realtime Database 的 Base64 圖片與紀錄容量，並可一鍵清理「已隱藏且不再被任何圖章使用」的舊自訂圖章。
+          </p>
+          <div id="storage-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, set, update, remove, get } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-database.js";
+
+    // === 1. Firebase 設定（與主程式相同）===
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4rjiN-kY3x-p8PA-nu0iFwixbgjblA7o",
+      authDomain: "baby-scollection.firebaseapp.com",
+      databaseURL: "https://baby-scollection-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "baby-scollection",
+      storageBucket: "baby-scollection.firebasestorage.app",
+      messagingSenderId: "23229963817",
+      appId: "1:23229963817:web:2d862adc2d452c261e4638",
+      measurementId: "G-8KRQ90NX5S"
+    };
+
+    // === 2. 指定唯一允許登入的管理員 Email ===
+    const ALLOWED_ADMIN_EMAIL = "ej302404629@gmail.com";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+
+    const state = {
+      user: null,
+      families: {},
+      users: {},
+      currentTab: "families",
+      unsubFamilies: null,
+      unsubUsers: null
+    };
+
+    // === 工具函式 ===
+    function escapeHTML(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function copyText(text, label = "已複製") {
+      if (!text) return;
+      navigator.clipboard?.writeText(text)
+        .then(() => showToast(`${label}：${text}`))
+        .catch(() => prompt("請手動複製：", text));
+    }
+
+    function randomFamilyId() {
+      return "fam_" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function randomInviteCode() {
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+
+    function getByteSize(obj) {
+      if (!obj) return 0;
+      return new Blob([JSON.stringify(obj)]).size;
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    function downloadJSON(filename, dataObj) {
+      const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function getTodayStamp() {
+      const d = new Date();
+      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    // === 認證與權限控制 ===
+    function detachListeners() {
+      if (typeof state.unsubFamilies === "function") { state.unsubFamilies(); state.unsubFamilies = null; }
+      if (typeof state.unsubUsers === "function") { state.unsubUsers(); state.unsubUsers = null; }
+    }
+
+    function startDatabaseListeners() {
+      detachListeners();
+      const errBanner = document.getElementById("db-error-banner");
+      errBanner.classList.add("hidden");
+
+      const onDbError = (err) => {
+        errBanner.innerHTML = `<strong>資料庫讀取失敗：</strong>${escapeHTML(err.message)}（請檢查 Firebase Realtime Database Rules 是否已允許您的管理員帳號讀取 families 與 users）`;
+        errBanner.classList.remove("hidden");
+      };
+
+      state.unsubFamilies = onValue(ref(db, "families"), (snap) => {
+        state.families = snap.val() || {};
+        renderAll();
+      }, onDbError);
+
+      state.unsubUsers = onValue(ref(db, "users"), (snap) => {
+        state.users = snap.val() || {};
+        renderAll();
+      }, onDbError);
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      state.user = user;
+      const topbarUser = document.getElementById("topbar-user");
+      const viewLogin = document.getElementById("view-login");
+      const viewDenied = document.getElementById("view-denied");
+      const viewAdmin = document.getElementById("view-admin");
+
+      if (!user) {
+        detachListeners();
+        topbarUser.classList.add("hidden");
+        viewLogin.classList.remove("hidden");
+        viewDenied.classList.add("hidden");
+        viewAdmin.classList.add("hidden");
+        return;
+      }
+
+      document.getElementById("user-photo").src = user.photoURL || "";
+      document.getElementById("user-name").textContent = user.displayName || "管理員";
+      document.getElementById("user-email").textContent = user.email || "";
+      topbarUser.classList.remove("hidden");
+      viewLogin.classList.add("hidden");
+
+      const userEmail = (user.email || "").trim().toLowerCase();
+      const isAllowed = userEmail === ALLOWED_ADMIN_EMAIL.toLowerCase();
+
+      if (!isAllowed) {
+        detachListeners();
+        document.getElementById("denied-email").textContent = user.email || "未知帳號";
+        viewDenied.classList.remove("hidden");
+        viewAdmin.classList.add("hidden");
+        return;
+      }
+
+      viewDenied.classList.add("hidden");
+      viewAdmin.classList.remove("hidden");
+      startDatabaseListeners();
+    });
+
+    document.getElementById("btn-google-login").onclick = async () => {
+      const errEl = document.getElementById("login-error");
+      errEl.classList.add("hidden");
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        errEl.textContent = `登入失敗：${err.message}（請確認 Firebase Authentication 已啟用 Google 登入，並將目前網域加入已授權網域）`;
+        errEl.classList.remove("hidden");
+      }
+    };
+
+    const doLogout = () => signOut(auth);
+    document.getElementById("btn-logout").onclick = doLogout;
+    document.getElementById("btn-denied-logout").onclick = doLogout;
+    document.getElementById("btn-copy-uid").onclick = () => copyText(state.user?.uid, "已複製 UID");
+
+    // === 頁籤切換 ===
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.onclick = () => {
+        state.currentTab = btn.dataset.tab;
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+        ["families", "users", "backup", "migrate", "storage"].forEach((t) => {
+          document.getElementById(`tab-${t}`).classList.toggle("hidden", t !== state.currentTab);
+        });
+      };
+    });
+
+    // === 渲染總入口 ===
+    function renderAll() {
+      renderStats();
+      renderFamilySelects();
+      renderFamiliesList();
+      renderUsersTable();
+      renderStorageList();
+    }
+
+    function renderStats() {
+      const famEntries = Object.entries(state.families);
+      const userCount = Object.keys(state.users).length;
+      let totalKids = 0;
+      let totalStamps = 0;
+
+      famEntries.forEach(([, fam]) => {
+        totalKids += Object.keys(fam?.kids || {}).length;
+        totalStamps += Object.keys(fam?.stamps || {}).length;
+      });
+
+      const totalSize = getByteSize({ families: state.families, users: state.users });
+      document.getElementById("stat-families").textContent = famEntries.length;
+      document.getElementById("stat-users").textContent = userCount;
+      document.getElementById("stat-kids-stamps").textContent = `${totalKids} / ${totalStamps}`;
+      document.getElementById("stat-total-size").textContent = formatBytes(totalSize);
+    }
+
+    function renderFamilySelects() {
+      const famIds = Object.keys(state.families).sort();
+      const optionsHTML = famIds.length > 0
+        ? famIds.map((id) => {
+            const name = state.families[id]?.meta?.name || "未命名家庭";
+            return `<option value="${escapeHTML(id)}">${escapeHTML(id)}（${escapeHTML(name)}）</option>`;
+          }).join("")
+        : `<option value="">（目前無家庭）</option>`;
+
+      ["bind-family-select", "export-family-select", "migrate-src-select"].forEach((elId) => {
+        const sel = document.getElementById(elId);
+        const prev = sel.value;
+        sel.innerHTML = optionsHTML;
+        if (prev && famIds.includes(prev)) sel.value = prev;
+      });
+    }
+
+    // === 1. 家庭與成員管理 ===
+    function renderFamiliesList() {
+      const container = document.getElementById("families-list");
+      const famIds = Object.keys(state.families).sort();
+      if (famIds.length === 0) {
+        container.innerHTML = `<p style="color:var(--sub); text-align:center;">資料庫中目前沒有家庭資料。</p>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      famIds.forEach((famId) => {
+        const fam = state.families[famId] || {};
+        const meta = fam.meta || {};
+        const famName = meta.name || (famId === "0000" ? "預設舊家庭" : "未命名家庭");
+        const inviteCode = meta.inviteCode || "未設定";
+        const kidsCount = Object.keys(fam.kids || {}).length;
+        const tasksCount = Object.keys(fam.tasks || {}).length;
+        const stampsCount = Object.keys(fam.stamps || {}).length;
+        const membersMap = fam.members || {};
+        const memberUids = Object.keys(membersMap).filter((uid) => membersMap[uid]);
+        const sizeStr = formatBytes(getByteSize(fam));
+
+        const card = document.createElement("div");
+        card.className = "family-card";
+        card.innerHTML = `
+          <div class="family-top">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <strong style="font-size:16px;">${escapeHTML(famName)}</strong>
+                <span class="mono">${escapeHTML(famId)}</span>
+                <span class="badge badge-blue">邀請碼：${escapeHTML(inviteCode)}</span>
+                <span class="badge badge-green">${sizeStr}</span>
+              </div>
+              <div class="family-meta">
+                <span>👶 寶貝：${kidsCount}</span>
+                <span>📋 任務：${tasksCount}</span>
+                <span>🌟 圖章：${stampsCount}</span>
+                <span>👥 綁定成員：${memberUids.length}</span>
+              </div>
+            </div>
+            <div class="family-actions">
+              <button class="btn btn-secondary btn-sm" data-act="rename">改名</button>
+              <button class="btn btn-secondary btn-sm" data-act="reset-code">重設邀請碼</button>
+              <button class="btn btn-primary btn-sm" data-act="export">匯出備份</button>
+              <button class="btn btn-danger btn-sm" data-act="delete">刪除家庭</button>
+            </div>
+          </div>
+          <div style="font-size:12px; font-weight:700; color:#374151;">已綁定成員：</div>
+          <div class="member-chips">
+            ${memberUids.length === 0
+              ? `<span style="font-size:12px; color:var(--sub);">尚未綁定任何 Google 帳號</span>`
+              : memberUids.map((uid) => {
+                  const u = state.users[uid] || {};
+                  const label = u.name || u.email || uid;
+                  return `<span class="member-chip" title="${escapeHTML(uid)}">
+                    <span>${escapeHTML(label)}</span>
+                    <button type="button" data-kick-uid="${escapeHTML(uid)}" title="移出此家庭">×</button>
+                  </span>`;
+                }).join("")}
+          </div>`;
+
+        card.querySelector('[data-act="rename"]').onclick = async () => {
+          const nextName = prompt(`請輸入家庭「${famId}」的新名稱：`, famName);
+          if (nextName === null) return;
+          const trimmed = nextName.trim();
+          if (!trimmed) return showToast("名稱不能為空");
+          await set(ref(db, `families/${famId}/meta/name`), trimmed);
+          showToast("已更新家庭名稱");
+        };
+
+        card.querySelector('[data-act="reset-code"]').onclick = async () => {
+          const code = randomInviteCode();
+          await set(ref(db, `families/${famId}/meta/inviteCode`), code);
+          showToast(`已重設邀請碼為：${code}`);
+        };
+
+        card.querySelector('[data-act="export"]').onclick = () => {
+          downloadJSON(`backup_family_${famId}_${getTodayStamp()}.json`, fam);
+          showToast(`已匯出家庭 ${famId} 備份`);
+        };
+
+        card.querySelector('[data-act="delete"]').onclick = async () => {
+          const check = prompt(`⚠️ 危險操作！這將永久刪除家庭「${famId}」的所有資料。\n請輸入家庭 ID「${famId}」以確認刪除：`);
+          if (check !== famId) return showToast("已取消刪除");
+          const updates = {};
+          updates[`families/${famId}`] = null;
+          Object.entries(state.users).forEach(([uid, u]) => {
+            if (u && u.familyId === famId) {
+              updates[`users/${uid}/familyId`] = null;
+            }
+          });
+          await update(ref(db), updates);
+          showToast(`已刪除家庭 ${famId}`);
+        };
+
+        card.querySelectorAll("[data-kick-uid]").forEach((btn) => {
+          btn.onclick = async () => {
+            const targetUid = btn.dataset.kickUid;
+            if (!confirm(`確定要將帳號 ${targetUid} 移出家庭 ${famId} 嗎？`)) return;
+            const updates = {};
+            updates[`families/${famId}/members/${targetUid}`] = null;
+            if (state.users[targetUid]?.familyId === famId) {
+              updates[`users/${targetUid}/familyId`] = null;
+            }
+            await update(ref(db), updates);
+            showToast("已將成員移出家庭");
+          };
+        });
+
+        container.appendChild(card);
+      });
+    }
+
+    document.getElementById("btn-create-family").onclick = async () => {
+      const idInput = document.getElementById("new-fam-id");
+      const nameInput = document.getElementById("new-fam-name");
+      const famId = idInput.value.trim() || randomFamilyId();
+      const famName = nameInput.value.trim() || "新家庭";
+
+      if (!/^[a-zA-Z0-9_-]+$/.test(famId)) {
+        return showToast("家庭 ID 僅允許英文字母、數字、底線與連字號");
+      }
+      if (state.families[famId]) {
+        return showToast(`家庭 ID「${famId}」已存在`);
+      }
+
+      const code = randomInviteCode();
+      await set(ref(db, `families/${famId}/meta`), {
+        name: famName,
+        inviteCode: code,
+        createdAt: Date.now()
+      });
+      idInput.value = "";
+      nameInput.value = "";
+      showToast(`已建立家庭 ${famId}（邀請碼 ${code}）`);
+    };
+
+    document.getElementById("btn-refresh-all").onclick = () => {
+      startDatabaseListeners();
+      showToast("已重新連線同步資料");
+    };
+
+    // === 2. 帳號綁定總表 ===
+    async function bindUserToFamily(uid, targetFamilyId, extraProfile = {}) {
+      const updates = {};
+      const existing = state.users[uid] || {};
+      const oldFamilyId = existing.familyId;
+
+      if (oldFamilyId && oldFamilyId !== targetFamilyId) {
+        updates[`families/${oldFamilyId}/members/${uid}`] = null;
+      }
+
+      updates[`users/${uid}`] = {
+        ...existing,
+        ...extraProfile,
+        familyId: targetFamilyId || null,
+        updatedAt: Date.now()
+      };
+
+      if (targetFamilyId) {
+        updates[`families/${targetFamilyId}/members/${uid}`] = true;
+      }
+
+      await update(ref(db), updates);
+    }
+
+    document.getElementById("btn-manual-bind").onclick = async () => {
+      const uid = document.getElementById("bind-uid-input").value.trim();
+      const name = document.getElementById("bind-name-input").value.trim();
+      const famId = document.getElementById("bind-family-select").value;
+      if (!uid) return showToast("請輸入 Google UID");
+      if (!famId) return showToast("請選擇目標家庭");
+
+      const extra = {};
+      if (name) extra.name = name;
+      if (uid === state.user?.uid && !state.users[uid]?.email) {
+        extra.email = state.user.email || "";
+        if (!extra.name) extra.name = state.user.displayName || "管理員";
+        extra.role = "owner";
+      }
+
+      await bindUserToFamily(uid, famId, extra);
+      document.getElementById("bind-uid-input").value = "";
+      document.getElementById("bind-name-input").value = "";
+      showToast(`已將帳號綁定至家庭 ${famId}`);
+    };
+
+    function renderUsersTable() {
+      const tbody = document.getElementById("users-tbody");
+      const famIds = Object.keys(state.families).sort();
+      const userEntries = Object.entries(state.users);
+
+      if (userEntries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--sub); padding:24px;">目前尚未有已記錄的帳號（可使用上方表單手動綁定自己的 UID）</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      userEntries.forEach(([uid, u]) => {
+        const tr = document.createElement("tr");
+        const curFam = u?.familyId || "";
+        const famOpts = [
+          `<option value="">（解除綁定）</option>`,
+          ...famIds.map((fid) => `<option value="${escapeHTML(fid)}" ${fid === curFam ? "selected" : ""}>${escapeHTML(fid)}（${escapeHTML(state.families[fid]?.meta?.name || "未命名")}）</option>`)
+        ].join("");
+
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight:700;">${escapeHTML(u?.name || "未設定名稱")}</div>
+            <div style="font-size:11px; color:var(--sub);">${escapeHTML(u?.email || "-")}</div>
+          </td>
+          <td><span class="mono">${escapeHTML(uid)}</span></td>
+          <td>${curFam ? `<span class="badge badge-blue">${escapeHTML(curFam)}</span>` : `<span class="badge badge-warn">未綁定</span>`}</td>
+          <td>${escapeHTML(u?.role || "member")}</td>
+          <td>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select class="select" style="width:auto; padding:5px 8px; font-size:12px;">${famOpts}</select>
+              <button class="btn btn-primary btn-sm">套用</button>
+            </div>
+          </td>`;
+
+        const selectEl = tr.querySelector("select");
+        tr.querySelector("button").onclick = async () => {
+          const nextFam = selectEl.value;
+          await bindUserToFamily(uid, nextFam);
+          showToast(nextFam ? `已改綁定至 ${nextFam}` : "已解除家庭綁定");
+        };
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    // === 3. 備份與還原 ===
+    document.getElementById("btn-export-family").onclick = () => {
+      const famId = document.getElementById("export-family-select").value;
+      if (!famId || !state.families[famId]) return showToast("請選擇有效的家庭");
+      downloadJSON(`backup_family_${famId}_${getTodayStamp()}.json`, state.families[famId]);
+      showToast(`已下載家庭 ${famId} 備份`);
+    };
+
+    document.getElementById("btn-export-full").onclick = () => {
+      downloadJSON(`backup_full_db_${getTodayStamp()}.json`, {
+        exportedAt: new Date().toISOString(),
+        families: state.families,
+        users: state.users
+      });
+      showToast("已下載整個資料庫完整備份");
+    };
+
+    document.getElementById("btn-import-family").onclick = async () => {
+      const targetId = document.getElementById("import-target-id").value.trim();
+      const file = document.getElementById("import-file-input").files[0];
+      if (!targetId || !/^[a-zA-Z0-9_-]+$/.test(targetId)) {
+        return showToast("請輸入有效的目標家庭 ID（英數底線連字號）");
+      }
+      if (!file) return showToast("請先選擇 JSON 備份檔案");
+
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return showToast("JSON 格式不正確");
+        }
+        if (parsed.families && parsed.users && !parsed.kids && !parsed.stamps) {
+          return showToast("您選擇的是「整庫備份檔」，單一家庭還原請選擇單一家庭的 JSON 檔");
+        }
+        const existsMsg = state.families[targetId] ? `（將完全覆蓋現有的 ${targetId}！）` : `（將建立新家庭 ${targetId}）`;
+        if (!confirm(`確定要將備份檔還原至家庭「${targetId}」嗎？${existsMsg}`)) return;
+
+        await set(ref(db, `families/${targetId}`), parsed);
+        document.getElementById("import-file-input").value = "";
+        showToast(`已成功還原至家庭 ${targetId}`);
+      } catch (err) {
+        showToast(`還原失敗：${err.message}`);
+      }
+    };
+
+    // === 4. 資料搬家工具 ===
+    document.getElementById("btn-gen-migrate-id").onclick = () => {
+      document.getElementById("migrate-dst-id").value = randomFamilyId();
+    };
+
+    document.getElementById("btn-run-migrate").onclick = async () => {
+      const srcId = document.getElementById("migrate-src-select").value;
+      const dstId = document.getElementById("migrate-dst-id").value.trim();
+      const updateUsers = document.getElementById("migrate-update-users").checked;
+      const deleteSrc = document.getElementById("migrate-delete-src").checked;
+
+      if (!srcId || !state.families[srcId]) return showToast("請選擇來源家庭");
+      if (!dstId || !/^[a-zA-Z0-9_-]+$/.test(dstId)) return showToast("請輸入有效的新家庭 ID");
+      if (srcId === dstId) return showToast("來源與目標 ID 不能相同");
+      if (state.families[dstId] && !confirm(`目標家庭「${dstId}」已存在，確定要覆蓋嗎？`)) return;
+
+      const summary = `將複製「${srcId}」→「${dstId}」` +
+        (updateUsers ? "\n• 自動更新所有成員綁定至新家庭" : "") +
+        (deleteSrc ? "\n• ⚠️ 搬家後刪除來源家庭" : "\n• 保留來源家庭資料");
+      if (!confirm(summary)) return;
+
+      try {
+        const srcSnap = await get(ref(db, `families/${srcId}`));
+        const srcData = srcSnap.val();
+        if (!srcData) return showToast("來源家庭資料為空");
+
+        const updates = {};
+        updates[`families/${dstId}`] = srcData;
+
+        if (updateUsers) {
+          Object.entries(state.users).forEach(([uid, u]) => {
+            if (u && u.familyId === srcId) {
+              updates[`users/${uid}/familyId`] = dstId;
+            }
+          });
+        }
+
+        if (deleteSrc) {
+          updates[`families/${srcId}`] = null;
+        }
+
+        await update(ref(db), updates);
+        document.getElementById("migrate-dst-id").value = "";
+        showToast(`資料搬家完成！新家庭 ID：${dstId}`);
+      } catch (err) {
+        showToast(`搬家失敗：${err.message}`);
+      }
+    };
+
+    // === 5. 容量監控與清理 ===
+    function renderStorageList() {
+      const container = document.getElementById("storage-list");
+      const famIds = Object.keys(state.families).sort();
+      if (famIds.length === 0) {
+        container.innerHTML = `<p style="color:var(--sub); text-align:center;">目前無資料可分析。</p>`;
+        return;
+      }
+
+      container.innerHTML = "";
+      famIds.forEach((famId) => {
+        const fam = state.families[famId] || {};
+        const totalBytes = getByteSize(fam);
+        const framesBytes = getByteSize(fam.customFrames);
+        const customStampsBytes = getByteSize(fam.customStamps);
+        const kidsBytes = getByteSize(fam.kids);
+        const rewardsBytes = getByteSize(fam.rewards);
+        const stampsBytes = getByteSize(fam.stamps);
+
+        const usedCustomIds = new Set();
+        Object.values(fam.stamps || {}).forEach((s) => {
+          if (s && s.customStampId) usedCustomIds.add(s.customStampId);
+        });
+        const orphanCustomStamps = Object.values(fam.customStamps || {}).filter(
+          (cs) => cs && cs.hidden && !usedCustomIds.has(cs.id)
+        );
+        const orphanBytes = getByteSize(orphanCustomStamps);
+
+        const box = document.createElement("div");
+        box.className = "family-card";
+        box.innerHTML = `
+          <div class="family-top" style="margin-bottom:6px;">
+            <div>
+              <strong style="font-size:15px;">${escapeHTML(fam.meta?.name || famId)}</strong>
+              <span class="mono" style="margin-left:6px;">${escapeHTML(famId)}</span>
+              <span class="badge ${totalBytes > 5 * 1024 * 1024 ? "badge-red" : "badge-blue"}" style="margin-left:6px;">
+                總計 ${formatBytes(totalBytes)}
+              </span>
+            </div>
+            <div>
+              ${orphanCustomStamps.length > 0
+                ? `<button class="btn btn-warn btn-sm" data-clean-orphan>🧹 清理 ${orphanCustomStamps.length} 個閒置自訂圖章（省 ${formatBytes(orphanBytes)}）</button>`
+                : `<span class="badge badge-green">無閒置圖片</span>`}
+            </div>
+          </div>
+          <div class="size-bars">
+            <div class="size-box">自訂頭框 (customFrames)<strong>${formatBytes(framesBytes)}</strong></div>
+            <div class="size-box">自訂圖章 (customStamps)<strong>${formatBytes(customStampsBytes)}</strong></div>
+            <div class="size-box">寶貝頭像 (kids)<strong>${formatBytes(kidsBytes)}</strong></div>
+            <div class="size-box">大獎勵圖 (rewards)<strong>${formatBytes(rewardsBytes)}</strong></div>
+            <div class="size-box">集章紀錄 (stamps)<strong>${formatBytes(stampsBytes)}</strong></div>
+          </div>`;
+
+        const cleanBtn = box.querySelector("[data-clean-orphan]");
+        if (cleanBtn) {
+          cleanBtn.onclick = async () => {
+            if (!confirm(`確定要清除家庭「${famId}」中 ${orphanCustomStamps.length} 個不再使用的舊自訂圖章嗎？`)) return;
+            const updates = {};
+            orphanCustomStamps.forEach((cs) => {
+              updates[`families/${famId}/customStamps/${cs.id}`] = null;
+            });
+            await update(ref(db), updates);
+            showToast(`已清理 ${orphanCustomStamps.length} 個閒置自訂圖章`);
+          };
+        }
+
+        container.appendChild(box);
+      });
+    }
+  </script>
+</body>
+</html>
