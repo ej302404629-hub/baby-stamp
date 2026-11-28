@@ -2570,6 +2570,11 @@
     // === Q版專屬 SVG 頭像、指紋、愛心與哭臉產生器 ===
     const GUARDIAN_AVATAR_OPTIONS = {
       humans: [
+        { type: "dad", label: "爸爸" },
+        { type: "mom", label: "媽媽" },
+        { type: "grandpa", label: "爺爺" },
+        { type: "grandma", label: "奶奶" },
+        { type: "aunt", label: "阿姨" },      
         { type: "h_boy", label: "小男孩" },
         { type: "h_girl", label: "小女孩" },
         { type: "h_teacher", label: "老師" },
@@ -4783,7 +4788,7 @@
 
     // 新增關主 Modal
     function openAddGuardianModal() {
-      let selectedAvatar = "h_boy";
+      let selectedAvatar = "dad";
       let selectedCategory = "humans";
       let selectedColor = "#3399FF";
       const webSafeColors = getWebSafeColors();
@@ -4802,9 +4807,9 @@
           <input type="text" id="new-guardian-name" class="form-input" placeholder="例如：舅舅、外婆、老師" />
         </div>
         <div class="form-group">
-          <label class="form-label">選擇 Q 版頭像（20 款）</label>
+          <label class="form-label">選擇 Q 版頭像（25 款）</label>
           <div class="avatar-cat-tabs">
-            <button type="button" class="avatar-cat-btn active" data-cat="humans">人物 (10)</button>
+            <button type="button" class="avatar-cat-btn active" data-cat="humans">人物 (15)</button>
             <button type="button" class="avatar-cat-btn" data-cat="animals">動物 (10)</button>
           </div>
           <div class="avatar-picker-grid" id="ng-avatar-grid"></div>
@@ -6078,6 +6083,8 @@
         state.currentGuardianId = savedGuardianId;
         document.getElementById("page-login").classList.add("hidden");
         document.getElementById("page-family-setup").classList.add("hidden");
+        document.getElementById("page-kid").classList.add("hidden");
+        document.getElementById("page-main").classList.add("hidden");
         playGuardianWelcomeAnimation({ fromCenter: true });
       } else {
         showPage("guardian");
