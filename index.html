@@ -1744,6 +1744,7 @@
     <div class="redeem-bar-actions">
       <button class="btn btn-secondary" style="padding:8px 12px; font-size:14px;" id="btn-cancel-edit">返回</button>
       <button class="btn hidden" style="padding:8px 10px; font-size:14px; background:#f59e0b; color:#fff;" id="btn-rename-task">改名稱</button>
+      <button class="btn hidden" style="padding:8px 10px; font-size:14px; background:#10b981; color:#fff;" id="btn-edit-task-stamps">修改章數</button>
       <button class="btn btn-primary hidden" style="padding:8px 12px; font-size:14px;" id="btn-toggle-task-type">切換類型</button>
       <button class="btn btn-restore hidden" style="padding:8px 14px; font-size:14px;" id="btn-restore-punished">恢復</button>
       <button class="btn btn-danger" style="padding:8px 12px; font-size:14px;" id="btn-delete-selected">刪除</button>
@@ -2075,6 +2076,9 @@
       const renameBtn = document.getElementById("btn-rename-task");
       renameBtn.classList.toggle("hidden", !isTaskEdit);
       renameBtn.disabled = count !== 1;
+      const editStampsBtn = document.getElementById("btn-edit-task-stamps");
+      editStampsBtn.classList.toggle("hidden", !isTaskEdit);
+      editStampsBtn.disabled = count !== 1;
 
       const toggleBtn = document.getElementById("btn-toggle-task-type");
       toggleBtn.classList.toggle("hidden", !isTaskEdit);
@@ -2134,6 +2138,125 @@
       document.getElementById("m-confirm-rename").onclick = submitRename;
       input.onkeydown = (e) => {
         if (e.key === "Enter") submitRename();
+      };
+    }
+    function openEditTaskStampsModal() {
+      const ids = [...state.editSelectedIds];
+      if (ids.length !== 1) return;
+      const task = (state.dbData.tasks || {})[ids[0]];
+      if (!task) return;
+
+      const currentCount = Math.max(1, Number(task.stampCount) || 1);
+
+      openModal(`
+        <h3 class="modal-title">修改任務章數</h3>
+        <p style="text-align:center; font-size:14px; color:#4b5563; margin:0 0 12px;">
+          任務：<strong>${escapeHTML(task.name)}</strong>（目前 ${currentCount} 章）
+        </p>
+        <div class="form-group">
+          <label class="form-label">新的可獲得印章數量</label>
+          <select id="edit-task-stamp-count" class="form-input">
+            ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => `<option value="${n}" ${n === currentCount ? "selected" : ""}>${n} 個印章</option>`).join("")}
+          </select>
+        </div>
+        <p style="text-align:center; font-size:12px; color:#6b7280; margin:0 0 8px; line-height:1.5;">
+          增加章數會保留已蓋圖章並在後方新增框格；刪減章數會先移除空格，不足時從最後蓋的圖章開始扣除。
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" id="m-cancel">取消</button>
+          <button class="btn btn-primary" id="m-confirm-stamps">確認修改</button>
+        </div>`);
+
+      document.getElementById("m-cancel").onclick = closeModal;
+      document.getElementById("m-confirm-stamps").onclick = () => {
+        const newCount = Math.max(1, Number(document.getElementById("edit-task-stamp-count").value) || 1);
+        if (newCount === currentCount) {
+          closeModal();
+          return;
+        }
+
+        const updates = {};
+        updates[`${ROOT_PATH}/tasks/${task.id}/stampCount`] = newCount;
+
+        // 刪減章數時，處理目前檢視日期（state.viewDate）上該任務已蓋的圖章
+        if (newCount < currentCount) {
+          const allStamps = Object.values(state.dbData.stamps || {});
+          const stampsByKid = {};
+
+          allStamps.forEach((s) => {
+            if (s && s.taskId === task.id && s.date === state.viewDate) {
+              if (!stampsByKid[s.kidId]) stampsByKid[s.kidId] = [];
+              stampsByKid[s.kidId].push(s);
+            }
+          });
+
+          Object.entries(stampsByKid).forEach(([kidId, kidStamps]) => {
+            // 若已蓋圖章數超過新章數，從最後蓋的圖章開始扣除（優先保留已兌換圖章）
+            const sortedForRemoval = [...kidStamps].sort((a, b) => {
+              const aRedeemed = a.redeemedId ? 1 : 0;
+              const bRedeemed = b.redeemedId ? 1 : 0;
+              if (aRedeemed !== bRedeemed) return aRedeemed - bRedeemed;
+              const tDiff = (b.timestamp || 0) - (a.timestamp || 0);
+              if (tDiff !== 0) return tDiff;
+              return (b.slotIndex ?? 0) - (a.slotIndex ?? 0);
+            });
+
+            const removeCount = Math.max(0, kidStamps.length - newCount);
+            const removedIds = new Set();
+            for (let i = 0; i < removeCount; i++) {
+              const target = sortedForRemoval[i];
+              removedIds.add(target.id);
+              updates[`${ROOT_PATH}/stamps/${target.id}`] = null;
+              state.selectedStampIds.delete(target.id);
+            }
+
+            // 若剩餘保留的圖章有位於新章數範圍外（slotIndex >= newCount），移入前面的空格
+            const keptStamps = kidStamps.filter((s) => !removedIds.has(s.id));
+            const occupiedSlots = new Set();
+            const outOfRangeStamps = [];
+
+            keptStamps.forEach((s) => {
+              const idx = s.slotIndex ?? 0;
+              if (idx < newCount && !occupiedSlots.has(idx)) {
+                occupiedSlots.add(idx);
+              } else {
+                outOfRangeStamps.push(s);
+              }
+            });
+
+            const freeSlots = [];
+            for (let slot = 0; slot < newCount; slot++) {
+              if (!occupiedSlots.has(slot)) freeSlots.push(slot);
+            }
+
+            outOfRangeStamps
+              .sort((a, b) => (a.slotIndex ?? 0) - (b.slotIndex ?? 0))
+              .forEach((s, i) => {
+                const targetSlot = freeSlots[i];
+                if (targetSlot === undefined) return;
+                if (s.redeemedId) {
+                  updates[`${ROOT_PATH}/stamps/${s.id}/slotIndex`] = targetSlot;
+                } else {
+                  const newStampId = `${kidId}_${task.id}_${state.viewDate}_${targetSlot}`;
+                  updates[`${ROOT_PATH}/stamps/${s.id}`] = null;
+                  updates[`${ROOT_PATH}/stamps/${newStampId}`] = {
+                    ...s,
+                    id: newStampId,
+                    slotIndex: targetSlot
+                  };
+                  if (state.selectedStampIds.has(s.id)) {
+                    state.selectedStampIds.delete(s.id);
+                    state.selectedStampIds.add(newStampId);
+                  }
+                }
+              });
+          });
+        }
+
+        update(ref(db), updates);
+        closeModal();
+        exitEditMode();
+        showToast(`已將任務章數修改為 ${newCount} 章`);
       };
     }
 
@@ -5618,6 +5741,7 @@
     document.getElementById("btn-open-redeem-modal").onclick = openRedeemModal;
     document.getElementById("btn-cancel-edit").onclick = exitEditMode;
     document.getElementById("btn-rename-task").onclick = openRenameTaskModal;
+    document.getElementById("btn-edit-task-stamps").onclick = openEditTaskStampsModal;
     document.getElementById("btn-toggle-task-type").onclick = openToggleTaskTypeModal;
     document.getElementById("btn-restore-punished").onclick = restoreSelectedPunishedStamps;
     document.getElementById("btn-delete-selected").onclick = openConfirmDeleteModal;
