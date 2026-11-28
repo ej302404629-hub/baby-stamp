@@ -1200,6 +1200,41 @@
       font-size: 9px;
       color: #6b7280;
     }
+    .frame-preview-stage {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+      touch-action: pan-y;
+      user-select: none;
+    }
+    .frame-preview-nav-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid #e5e7eb;
+      background: #f9fafb;
+      color: #4b5563;
+      font-size: 16px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.12s, background-color 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    .frame-preview-nav-btn:active:not(:disabled) {
+      transform: scale(0.9);
+      background: #eff6ff;
+      color: var(--theme-color);
+      border-color: var(--theme-color);
+    }
+    .frame-preview-nav-btn:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
+    }
 
     .modal-actions {
       display: flex;
@@ -4740,27 +4775,62 @@
       const kid = getActiveKids()[state.currentKidId];
       if (!kid) return;
 
-      const frameName = getFrameDisplayName(targetLvl);
+      const customFrames = state.dbData.customFrames || {};
+      const customLevels = Object.keys(customFrames).map(Number).filter((n) => !isNaN(n));
+      const maxLevel = Math.max(20, ...customLevels);
+      const currentLvl = Math.max(1, Math.min(maxLevel, Number(targetLvl) || 1));
+      const frameName = getFrameDisplayName(currentLvl);
 
       openModal(`
-        <h3 class="modal-title">LVL ${targetLvl} 外框預覽</h3>
-        <div style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px;">
-          <div style="position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center;">
-            <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
-              ${renderKidAvatarHTML(kid)}
+        <h3 class="modal-title">LVL ${currentLvl} 外框預覽</h3>
+        <div id="m-preview-swipe-area" style="display:flex; flex-direction:column; align-items:center; margin:4px 0 16px; touch-action:pan-y; user-select:none;">
+          <div class="frame-preview-stage">
+            <button type="button" class="frame-preview-nav-btn" id="m-preview-prev" title="上一等級" aria-label="上一等級" ${currentLvl <= 1 ? "disabled" : ""}>◀</button>
+            <div style="position:relative; width:150px; height:150px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <div style="width:100px; height:100px; border-radius:50%; overflow:hidden; background:#f3f4f6; display:flex; align-items:center; justify-content:center;">
+                ${renderKidAvatarHTML(kid)}
+              </div>
+              <div class="avatar-frame">${getFrameSVG(currentLvl)}</div>
             </div>
-            <div class="avatar-frame">${getFrameSVG(targetLvl)}</div>
+            <button type="button" class="frame-preview-nav-btn" id="m-preview-next" title="下一等級" aria-label="下一等級" ${currentLvl >= maxLevel ? "disabled" : ""}>▶</button>
           </div>
-          <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${targetLvl}</span>
+          <span class="lvl-badge" style="margin-top:8px; cursor:default;">LVL ${currentLvl} / ${maxLevel}</span>
           <div style="font-size:13px; color:#6b7280; margin-top:6px;">${escapeHTML(frameName)}</div>
         </div>
         <p style="text-align:center; font-size:12px; color:#9ca3af; margin:0 0 4px;">
-          點擊「上傳新頭框」開啟去背與定位工具（支援靜態圖與 GIF 動圖，限 2MB 內）
+          左右滑動或點擊箭頭可切換等級；點擊「上傳新頭框」開啟去背與定位工具（支援靜態圖與 GIF 動圖，限 2MB 內）
         </p>
         <div class="modal-actions">
           <button class="btn btn-secondary" id="m-preview-back">返回</button>
           <button class="btn btn-primary" id="m-preview-upload">上傳新頭框</button>
         </div>`);
+
+      const switchPreviewLevel = (delta) => {
+        const nextLvl = currentLvl + delta;
+        if (nextLvl < 1 || nextLvl > maxLevel) return;
+        openFramePreviewModal(nextLvl);
+      };
+
+      document.getElementById("m-preview-prev").onclick = () => switchPreviewLevel(-1);
+      document.getElementById("m-preview-next").onclick = () => switchPreviewLevel(1);
+
+      let previewTouchX = 0;
+      let previewTouchY = 0;
+      const swipeArea = document.getElementById("m-preview-swipe-area");
+      swipeArea.addEventListener("touchstart", (e) => {
+        if (e.touches.length !== 1) return;
+        previewTouchX = e.touches[0].clientX;
+        previewTouchY = e.touches[0].clientY;
+      }, { passive: true });
+      swipeArea.addEventListener("touchend", (e) => {
+        if (e.changedTouches.length !== 1) return;
+        const dx = e.changedTouches[0].clientX - previewTouchX;
+        const dy = e.changedTouches[0].clientY - previewTouchY;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 0) switchPreviewLevel(-1);
+          else switchPreviewLevel(1);
+        }
+      }, { passive: true });
 
       document.getElementById("m-preview-back").onclick = openLevelFramesModal;
       document.getElementById("m-preview-upload").onclick = () => {
@@ -4768,23 +4838,22 @@
           try {
             const finalName = (customName && customName.trim()) || "已自訂";
             const frameData = {
-              level: targetLvl,
+              level: currentLvl,
               name: finalName,
               image: dataUrl,
               timestamp: Date.now()
             };
-            await set(ref(db, `${ROOT_PATH}/customFrames/${targetLvl}`), frameData);
+            await set(ref(db, `${ROOT_PATH}/customFrames/${currentLvl}`), frameData);
             if (!state.dbData.customFrames) state.dbData.customFrames = {};
-            state.dbData.customFrames[targetLvl] = frameData;
-            showToast(`已更新 LVL ${targetLvl} 外框「${finalName}」！`);
-            openFramePreviewModal(targetLvl);
+            state.dbData.customFrames[currentLvl] = frameData;
+            showToast(`已更新 LVL ${currentLvl} 外框「${finalName}」！`);
+            openFramePreviewModal(currentLvl);
           } catch (err) {
             showToast(err?.message || "外框上傳失敗，請重試");
           }
         });
       };
     }
-
 
     // 新增關主 Modal
     function openAddGuardianModal() {
